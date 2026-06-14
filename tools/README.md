@@ -30,6 +30,49 @@ INGEST_URL=https://your-aggregator.example.com/ingest \
   automatically within `RESCAN_INTERVAL` seconds — no restart needed.
 - Run **one shipper per host**, not one per application.
 
+### Feeding it: symlink your process-manager logs
+
+The shipper just watches a directory, so the usual pattern is to symlink each
+app's log file into one shared directory (e.g. `/opt/common`) under a friendly
+name — the symlink's basename becomes the source tag.
+
+With **PM2** (logs live in `~/.pm2/logs/<app>-out.log` and `-error.log`):
+
+```bash
+sudo mkdir -p /opt/common
+# one named source per app (run as root so the links survive across users)
+sudo ln -s ~/.pm2/logs/myapp-out.log /opt/common/myapp.log
+sudo ln -s ~/.pm2/logs/api-out.log   /opt/common/api.log
+./log-dir-shipper.sh /opt/common
+```
+
+`tail -F` follows the symlink and survives log rotation. The same works for any
+log file — nginx, Apache, a systemd unit, etc.:
+
+```bash
+sudo ln -s /var/log/nginx/access.log /opt/common/nginx.log
+# systemd: journalctl -u myservice -f > /opt/common/myservice.log
+```
+
+Other process managers (supervisor, Docker `--log-path`, …) work the same way:
+get the lines into a `*.log` file inside the watched directory.
+
+### Windows
+
+`log-dir-shipper.sh` is a Bash script that depends on `tail -F`, `mkfifo`,
+`curl`, `jq`, and `awk`, so it does **not** run under native `cmd`/PowerShell.
+
+- **Recommended — WSL2.** Run everything inside a WSL2 (e.g. Ubuntu) shell; the
+  Linux instructions above apply verbatim. PM2-in-WSL logs sit at the same
+  `~/.pm2/logs/` path and `ln -s` works normally.
+- **Git Bash / MSYS2.** The script can run, but Windows symlinks need `mklink`
+  from an **admin** prompt (or with Developer Mode enabled):
+  `mklink C:\common\myapp.log "%USERPROFILE%\.pm2\logs\myapp-out.log"`.
+- **No symlinks at all.** Since the directory is just an argument, point the
+  shipper straight at the PM2 log folder —
+  `./log-dir-shipper.sh "$USERPROFILE/.pm2/logs"` — accepting that the source
+  tags become the raw PM2 filenames (`myapp-out`, `myapp-error`).
+
 ### The request it sends
 
 For each batch it POSTs (any `2xx` response counts as success):
