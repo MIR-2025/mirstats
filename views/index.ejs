@@ -67,9 +67,12 @@
       </div>
 
       <div class="card mb-3">
-        <div class="card-header d-flex justify-content-between">
+        <div class="card-header d-flex justify-content-between align-items-center">
           <span>live tail</span>
-          <span id="tail-filter" class="muted"></span>
+          <span class="d-flex align-items-center gap-2">
+            <span id="tail-filter" class="muted"></span>
+            <button id="tail-clear" type="button" class="tail-clear" title="Clear the saved tail">clear</button>
+          </span>
         </div>
         <div class="card-body py-2"><div id="tail"></div></div>
       </div>

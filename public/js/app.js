@@ -159,7 +159,22 @@ function clock(ms) {
   return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
 }
 
-function appendTail(t) {
+// The tail is persisted across reloads in localStorage (capped at TAIL_MAX).
+// Saves are throttled so a busy feed doesn't hammer storage on every line.
+const TAIL_KEY = 'mirstats.tail.v1';
+let tailLog = [];
+let saveTimer = null;
+
+function saveTailSoon() {
+  if (saveTimer) return;
+  saveTimer = setTimeout(() => {
+    saveTimer = null;
+    try { localStorage.setItem(TAIL_KEY, JSON.stringify(tailLog)); } catch { /* quota / disabled */ }
+  }, 800);
+}
+
+// Render one tail payload into the DOM (no storage side effects).
+function renderTail(t) {
   const div = document.createElement('div');
   div.className = 'ln' + (t.alert ? ' alert' : t.attack ? ' atk' : '');
   const ts = `<span class="ts">${clock(t.t)}</span> `;
@@ -174,6 +189,34 @@ function appendTail(t) {
   while (tailEl.children.length > TAIL_MAX) tailEl.removeChild(tailEl.firstChild);
   if (autoScroll && !div.hidden) tailEl.scrollTop = tailEl.scrollHeight;
 }
+
+// New live line: record it, render it, persist (throttled).
+function appendTail(t) {
+  tailLog.push(t);
+  while (tailLog.length > TAIL_MAX) tailLog.shift();
+  renderTail(t);
+  saveTailSoon();
+}
+
+// Restore the saved tail on load so a reload doesn't start blank.
+function loadTail() {
+  let arr;
+  try { arr = JSON.parse(localStorage.getItem(TAIL_KEY) || '[]'); } catch { arr = []; }
+  if (!Array.isArray(arr) || !arr.length) return;
+  tailLog = arr.slice(-TAIL_MAX);
+  for (const t of tailLog) renderTail(t);
+  applyTailFilter();
+}
+
+// Clear button: wipe the DOM, the in-memory ring, and the saved copy.
+$('tail-clear').addEventListener('click', () => {
+  tailLog = [];
+  if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+  try { localStorage.removeItem(TAIL_KEY); } catch { /* ignore */ }
+  tailEl.innerHTML = '';
+});
+
+loadTail();
 
 socket.on('stats', renderStats);
 socket.on('tail', appendTail);

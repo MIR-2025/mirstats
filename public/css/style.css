@@ -77,6 +77,9 @@ table.dash-table tr:hover td { background: #1a1a2a; }
 .chip.src-chip.active { outline: 1px solid #4fd1c5; background: #1f2937; }
 #tail-filter { cursor: pointer; }
 #tail-filter .clear { color: #fc8181; }
+.tail-clear { font-family: var(--mono); font-size: 0.68rem; color: #8b8ba7; cursor: pointer;
+  background: #1a1a2e; border: 1px solid #2a2a40; border-radius: 4px; padding: 1px 7px; line-height: 1.4; }
+.tail-clear:hover { color: #fc8181; border-color: #fc8181; background: #24243a; }
 #tail .ln[hidden] { display: none; }
 
 /* live tail */
