@@ -139,6 +139,17 @@ function renderStats(d) {
   const al = $('alerts');
   if (!d.alerts.length) al.innerHTML = '<div class="muted small">none yet</div>';
   else al.innerHTML = d.alerts.map((a) => `<div class="a">${esc(a.line)}</div>`).join('');
+
+  // auto-reports (attacker IPs past the hit threshold)
+  const rep = $('reports');
+  if (!d.reports || !d.reports.length) rep.innerHTML = '<div class="muted small">none yet</div>';
+  else rep.innerHTML = d.reports.map((r) => {
+    const loc = [r.org || r.asn, r.country].filter(Boolean).join(' · ');
+    const badge = r.mode === 'submitted'
+      ? `<span class="${r.ok ? 'green' : 'red'}">${r.ok ? 'reported' : 'failed' + (r.status ? ' ' + r.status : '')}</span>`
+      : '<span class="yellow">flagged</span>';
+    return `<div class="rep"><span class="atk-ip">${esc(r.ip)}</span> <span class="muted">${r.hits}×</span> ${badge}${loc ? ` <span class="muted">${esc(loc)}</span>` : ''}</div>`;
+  }).join('');
 }
 
 // ── live tail ──

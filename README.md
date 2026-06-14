@@ -20,6 +20,9 @@ client (no front-end build step).
 - **Top attackers** — IPs hitting credential-probe / scanner paths (`.env`,
   `.git`, `wp-admin`, `xmlrpc`, `actuator`, `/etc/passwd`, …), each linking out to
   **AbuseIPDB** and **ipinfo** for the IP.
+- **Auto-report** (optional, off by default) — when an IP crosses a hit
+  threshold, report it to AbuseIPDB enriched with ipinfo + sample log lines. See
+  [Auto-reporting attackers](#auto-reporting-attackers-optional).
 - **Alerts feed** — surfaces `*** ALERT ***` lines from the upstream feed.
 - **Tolerant parser** — extracts source / method / path / status / IP generically,
   so it handles nginx, Apache combined, JSON-ish, and custom formats without
@@ -53,6 +56,37 @@ directory of `.log` files and POSTs new lines to your aggregator (which then
 re-emits them over the Socket.io feed mirstats consumes). See
 **[tools/README.md](tools/README.md)** for usage, configuration, and a systemd
 example.
+
+## Auto-reporting attackers (optional)
+
+When a single IP crosses an attack-hit threshold, mirstats can report it to
+[AbuseIPDB](https://www.abuseipdb.com) — enriched with an
+[ipinfo](https://ipinfo.io) ASN/country lookup and a few of the offending log
+lines as evidence — and list it in the dashboard's **auto-reports** panel.
+
+It is **off by default** and safe to run as-is: with no keys it does nothing;
+with keys but `AUTO_REPORT=0` it only *flags* offenders on the dashboard (no
+submission). Set `AUTO_REPORT=1` **and** an `ABUSEIPDB_KEY` to actually submit.
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `AUTO_REPORT` | `0` | `1`/`true` to actually POST to AbuseIPDB; otherwise flag-only |
+| `REPORT_THRESHOLD` | `10` | attack hits from one IP before it's reported |
+| `REPORT_COOLDOWN_MS` | `21600000` | re-report a persistent attacker after this (6h) |
+| `ABUSEIPDB_KEY` | — | APIv2 key (see below) |
+| `IPINFO_KEY` | — | Lite token (see below); enrichment only — reporting works without it |
+| `ABUSEIPDB_CATEGORIES` | `21` | comma list; `21` = Web App Attack |
+| `REPORT_SKIP_IPS` | — | comma list of IPs to never report (e.g. your egress) |
+
+**Getting the keys** (both have free tiers):
+
+- **AbuseIPDB** — register at <https://www.abuseipdb.com/register>, then generate
+  an APIv2 key under <https://www.abuseipdb.com/account/api>. The free tier
+  allows reporting plus a daily check quota.
+- **ipinfo** — sign up at <https://ipinfo.io/signup> and copy your token from
+  <https://ipinfo.io/account/token>.
+
+Private, loopback, and link-local IPs are never reported.
 
 ## Requirements
 
