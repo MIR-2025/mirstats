@@ -4,9 +4,31 @@
 // `tail` event per upstream log line.
 const socket = io();
 
-socket.on('connect', () => socket.emit('join', 'stats'));
-
 const $ = (id) => document.getElementById(id);
+
+socket.on('connect', () => {
+  socket.emit('join', 'stats');
+  if (tailFilter) socket.emit('filter:source', tailFilter); // restore filter after a reconnect
+});
+
+// ── theme (persisted light / dark) ──
+const THEME_KEY = 'mirstats.theme';
+const dashEl = document.querySelector('.dash');
+function applyTheme(mode) {
+  const light = mode === 'light';
+  document.body.classList.toggle('theme-light', light);
+  if (dashEl) dashEl.setAttribute('data-bs-theme', light ? 'light' : 'dark');
+  const btn = $('theme-toggle');
+  if (btn) { btn.textContent = light ? '☀' : '☾'; btn.title = light ? 'Switch to dark' : 'Switch to light'; }
+}
+let theme = 'dark';
+try { theme = localStorage.getItem(THEME_KEY) || 'dark'; } catch { /* storage disabled */ }
+applyTheme(theme);
+$('theme-toggle').addEventListener('click', () => {
+  theme = theme === 'light' ? 'dark' : 'light';
+  try { localStorage.setItem(THEME_KEY, theme); } catch { /* ignore */ }
+  applyTheme(theme);
+});
 
 // Per-attacker lookup / abuse-reporting services. Each renders a small clickable
 // favicon (hosted locally in /images) that opens that service's page for the IP.
@@ -126,16 +148,21 @@ const tailEl = $('tail');
 let autoScroll = true;
 let tailFilter = null; // active source filter, or null = show all
 
-// Click a source chip to filter the tail to that source (toggle off by re-click).
+// Click a source chip to scope the WHOLE dashboard — stats and tail — to that
+// source; re-click the chip (or the ✕) clears back to all sources.
+function setSourceFilter(s) {
+  tailFilter = s;
+  socket.emit('filter:source', s); // server replies with a snapshot for this source
+  syncSourceChips();
+  applyTailFilter();
+}
 $('sources').addEventListener('click', (e) => {
   const chip = e.target.closest('.src-chip');
   if (!chip) return;
   const s = chip.dataset.src;
-  tailFilter = tailFilter === s ? null : s;
-  syncSourceChips();
-  applyTailFilter();
+  setSourceFilter(tailFilter === s ? null : s);
 });
-$('tail-filter').addEventListener('click', () => { tailFilter = null; syncSourceChips(); applyTailFilter(); });
+$('tail-filter').addEventListener('click', () => setSourceFilter(null));
 
 function syncSourceChips() {
   document.querySelectorAll('#sources .src-chip').forEach((c) =>
@@ -146,7 +173,7 @@ function applyTailFilter() {
   for (const ln of tailEl.children) ln.hidden = tailFilter && ln.dataset.source !== tailFilter;
   const ind = $('tail-filter');
   ind.innerHTML = tailFilter
-    ? `filtering <span style="color:${sourceColor(tailFilter)}">${esc(tailFilter)}</span> <span class="clear">✕</span>`
+    ? `showing only <span style="color:${sourceColor(tailFilter)}">${esc(tailFilter)}</span> <span class="clear">✕</span>`
     : '';
   if (autoScroll) tailEl.scrollTop = tailEl.scrollHeight;
 }
