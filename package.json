@@ -1,7 +1,7 @@
 {
   "name": "mirstats",
   "version": "1.0.0",
-  "description": "Self-hosted real-time log-stats dashboard: live tail + traffic, status, top paths/IPs, attacker IPs (AbuseIPDB/Shodan/ipinfo), and alerts across many sites on one screen.",
+  "description": "Self-hosted real-time log-stats dashboard: live tail + traffic, status, top paths/IPs, attacker IPs (AbuseIPDB/ipinfo), and alerts across many sites on one screen.",
   "license": "MIT",
   "type": "module",
   "main": "app.js",

@@ -19,7 +19,7 @@ client (no front-end build step).
 - **Top paths / IPs / methods / sources.**
 - **Top attackers** — IPs hitting credential-probe / scanner paths (`.env`,
   `.git`, `wp-admin`, `xmlrpc`, `actuator`, `/etc/passwd`, …), each linking out to
-  **AbuseIPDB**, **Shodan**, and **ipinfo** for the IP.
+  **AbuseIPDB** and **ipinfo** for the IP.
 - **Alerts feed** — surfaces `*** ALERT ***` lines from the upstream feed.
 - **Tolerant parser** — extracts source / method / path / status / IP generically,
   so it handles nginx, Apache combined, JSON-ish, and custom formats without
