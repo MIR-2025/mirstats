@@ -1,0 +1,14 @@
+# Secrets / local config — never commit
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+
+# Runtime logs
+logs/*.log
+
+# OS / editor cruft
+.DS_Store
+*.swp

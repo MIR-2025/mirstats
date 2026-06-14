@@ -1,0 +1,109 @@
+<%- include('partials/header') %>
+
+<div class="dash" data-bs-theme="dark">
+
+  <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+    <h1 class="h5 mb-0 teal">MIR LIVE STATS</h1>
+    <div class="small muted">
+      upstream <span id="upstream" class="pulse-bad">…</span>
+      &middot; uptime <span id="uptime">–</span>
+      &middot; <span id="lines">0</span> lines parsed
+    </div>
+  </div>
+
+  <!-- Stat cards -->
+  <div class="row g-2 mb-3" id="cards">
+    <div class="col-6 col-md">
+      <div class="card stat-card h-100"><div class="card-body py-2">
+        <div class="value teal" id="c-req">0</div><div class="label">requests</div>
+        <div class="sub" id="c-reqsub">&nbsp;</div>
+      </div></div>
+    </div>
+    <div class="col-6 col-md">
+      <div class="card stat-card h-100"><div class="card-body py-2">
+        <div class="value green" id="c-rate">0</div><div class="label">req / min</div>
+        <div class="sub">last 60s</div>
+      </div></div>
+    </div>
+    <div class="col-6 col-md">
+      <div class="card stat-card h-100"><div class="card-body py-2">
+        <div class="value yellow" id="c-err">0%</div><div class="label">error rate</div>
+        <div class="sub">4xx + 5xx</div>
+      </div></div>
+    </div>
+    <div class="col-6 col-md">
+      <div class="card stat-card h-100"><div class="card-body py-2">
+        <div class="value red" id="c-atk">0</div><div class="label">attacks</div>
+        <div class="sub" id="c-atksub">&nbsp;</div>
+      </div></div>
+    </div>
+    <div class="col-6 col-md">
+      <div class="card stat-card h-100"><div class="card-body py-2">
+        <div class="value crit" id="c-alert">0</div><div class="label">alerts</div>
+        <div class="sub">incident bursts</div>
+      </div></div>
+    </div>
+    <div class="col-6 col-md">
+      <div class="card stat-card h-100"><div class="card-body py-2">
+        <div class="value muted" id="c-bots">0</div><div class="label">bot hits</div>
+        <div class="sub" id="c-assetsub">&nbsp;</div>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <!-- left column -->
+    <div class="col-lg-7">
+      <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between">
+          <span>requests / minute &middot; last 60 min</span>
+          <span class="muted" id="rpm-peak"></span>
+        </div>
+        <div class="card-body">
+          <div id="rpm"></div>
+          <div class="status-bar mt-3" id="status-bar"></div>
+          <div class="d-flex justify-content-between small muted mt-1" id="status-legend"></div>
+        </div>
+      </div>
+
+      <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between">
+          <span>live tail</span>
+          <span id="tail-filter" class="muted"></span>
+        </div>
+        <div class="card-body py-2"><div id="tail"></div></div>
+      </div>
+
+      <div class="card mb-3">
+        <div class="card-header">recent alerts</div>
+        <div class="card-body py-2"><div id="alerts"><div class="muted small">none yet</div></div></div>
+      </div>
+    </div>
+
+    <!-- right column -->
+    <div class="col-lg-5">
+      <div class="card mb-3">
+        <div class="card-header">sources</div>
+        <div class="card-body py-2"><div id="sources"></div></div>
+      </div>
+      <div class="card mb-3">
+        <div class="card-header">top paths</div>
+        <div class="card-body py-2"><table class="dash-table"><tbody id="paths"></tbody></table></div>
+      </div>
+      <div class="card mb-3">
+        <div class="card-header">top IPs</div>
+        <div class="card-body py-2"><table class="dash-table"><tbody id="ips"></tbody></table></div>
+      </div>
+      <div class="card mb-3">
+        <div class="card-header red">top attackers</div>
+        <div class="card-body py-2"><table class="dash-table"><tbody id="attackers"></tbody></table></div>
+      </div>
+      <div class="card mb-3">
+        <div class="card-header">methods</div>
+        <div class="card-body py-2"><div id="methods"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/footer') %>
