@@ -34,7 +34,6 @@ $('theme-toggle').addEventListener('click', () => {
 // favicon (hosted locally in /images) that opens that service's page for the IP.
 const SERVICES = [
   { name: 'AbuseIPDB', icon: '/images/abuseipdb.png', url: (ip) => `https://www.abuseipdb.com/check/${encodeURIComponent(ip)}` },
-  { name: 'Shodan', icon: '/images/shodan.png', url: (ip) => `https://www.shodan.io/host/${encodeURIComponent(ip)}` },
   { name: 'ipinfo', icon: '/images/ipinfo.png', url: (ip) => `https://ipinfo.io/${encodeURIComponent(ip)}` },
 ];
 
