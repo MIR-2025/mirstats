@@ -19,10 +19,11 @@ const SERVICES = [
 const esc = (s) =>
   String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-// Source colors mirror mir.org's /logs viewer; unknown sources get a stable hue.
+// Curated colors for a few well-known source names; any other source gets a
+// stable auto-hue from the hash below. Edit these to match your own sources.
 const KNOWN = {
-  'mir-com': '#34d399', 'mir-org': '#facc15', mirassertions: '#a78bfa',
-  mircapture: '#f472b6', mirresolve: '#fb923c', mirprotocol: '#38bdf8',
+  api: '#34d399', web: '#facc15', auth: '#a78bfa',
+  cdn: '#f472b6', worker: '#fb923c', cron: '#38bdf8',
   claude: '#d97757', // Claude Code's own /v1/events telemetry from loopback
 };
 function sourceColor(s) {
