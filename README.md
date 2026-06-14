@@ -47,22 +47,12 @@ a tiny emitter that tails files and `io.emit('log:line', line)` is enough.
 
 ### Shipping logs from remote hosts
 
-`tools/log-dir-shipper.sh` is a dependency-light companion for the common case
-where the machines generating logs aren't the machine running mirstats. It
-watches a directory of `.log` files (one source per file, named by the
-filename), batches new lines, and POSTs them as JSON to an HTTP ingest endpoint:
-
-```bash
-INGEST_URL=https://your-aggregator.example.com/ingest \
-  tools/log-dir-shipper.sh /var/log/myapp
-# → POST {"source":"<filename>","lines":[ ... ]}  (any 2xx = success)
-```
-
-Run one per host (not per app); new `.log` files are picked up automatically.
-Note it ships to **your** aggregator, which is then responsible for re-emitting
-those lines over the Socket.io `log:line` channel that mirstats consumes — the
-shipper does not talk to mirstats directly. Requires `bash` ≥ 4, `tail`, `curl`,
-`jq`, `awk`.
+If the machines generating logs aren't the machine running mirstats,
+`tools/log-dir-shipper.sh` is a dependency-light companion that watches a
+directory of `.log` files and POSTs new lines to your aggregator (which then
+re-emits them over the Socket.io feed mirstats consumes). See
+**[tools/README.md](tools/README.md)** for usage, configuration, and a systemd
+example.
 
 ## Requirements
 
