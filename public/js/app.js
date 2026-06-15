@@ -107,10 +107,8 @@ function renderStats(d) {
     .map(([k]) => `<span>${k} <span class="${clsColor[k]}">${d.byStatus[k].toLocaleString()}</span></span>`)
     .join('');
 
-  // sources chips (clickable -> filter the live tail)
-  $('sources').innerHTML = d.bySource
-    .map((s) => `<span class="chip src-chip${s.key === tailFilter ? ' active' : ''}" data-src="${esc(s.key)}"><span style="color:${sourceColor(s.key)}">${esc(s.key)}</span><span class="c">${s.count.toLocaleString()}</span></span>`)
-    .join('');
+  // sources → donut pie + clickable legend (both filter the dashboard)
+  renderSources(d.bySource);
 
   // tables
   rows($('paths'), d.topPaths);
@@ -144,6 +142,26 @@ function renderStats(d) {
   }).join('');
 }
 
+// Sources as a donut pie + a clickable legend. Slices and chips both carry
+// data-src so the existing click handler filters the dashboard from either.
+function renderSources(items) {
+  const el = $('sources');
+  if (!items.length) { el.innerHTML = '<div class="muted small">none yet</div>'; return; }
+  const total = items.reduce((a, s) => a + s.count, 0) || 1;
+  let cum = 0;
+  const slices = items.map((s) => {
+    const pct = (s.count / total) * 100;
+    const off = 25 - cum; // dashoffset 25 starts the arc at 12 o'clock
+    cum += pct;
+    const dim = tailFilter && s.key !== tailFilter ? ' dim' : '';
+    return `<circle class="slice${dim}" cx="18" cy="18" r="15.915" fill="none" stroke="${sourceColor(s.key)}" stroke-width="4.5" stroke-dasharray="${pct.toFixed(3)} ${(100 - pct).toFixed(3)}" stroke-dashoffset="${off.toFixed(3)}" data-src="${esc(s.key)}" data-count="${s.count}" data-pct="${pct.toFixed(1)}"></circle>`;
+  }).join('');
+  const legend = items.map((s) =>
+    `<span class="chip src-chip${s.key === tailFilter ? ' active' : ''}" data-src="${esc(s.key)}"><span class="dot" style="background:${sourceColor(s.key)}"></span>${esc(s.key)}<span class="c">${s.count.toLocaleString()}</span></span>`
+  ).join('');
+  el.innerHTML = `<div class="pie-wrap"><svg class="pie" viewBox="0 0 36 36" role="img" aria-label="sources by volume">${slices}</svg></div><div class="src-legend">${legend}</div>`;
+}
+
 // ── live tail ──
 const TAIL_MAX = 150;
 const tailEl = $('tail');
@@ -159,9 +177,9 @@ function setSourceFilter(s) {
   applyTailFilter();
 }
 $('sources').addEventListener('click', (e) => {
-  const chip = e.target.closest('.src-chip');
-  if (!chip) return;
-  const s = chip.dataset.src;
+  const el = e.target.closest('.src-chip, .slice'); // legend chip OR pie slice
+  if (!el) return;
+  const s = el.dataset.src;
   setSourceFilter(tailFilter === s ? null : s);
 });
 $('tail-filter').addEventListener('click', () => setSourceFilter(null));
@@ -329,13 +347,8 @@ const rpmTip = document.createElement('div');
 rpmTip.className = 'rpm-tip';
 rpmTip.style.display = 'none';
 document.body.appendChild(rpmTip);
-function showTip(bar, x, y) {
-  const b = bar._b;
-  if (!b) return;
-  const rowsHtml = RPM_ORDER.filter(([k]) => b[k])
-    .map(([k]) => `<div><span class="${clsColor[k] || 'muted'}">${k}</span> ${b[k]}</div>`).join('')
-    || '<div class="muted">no requests</div>';
-  rpmTip.innerHTML = `<div class="rpm-tip-h">${stampMin(b.m)}</div>${rowsHtml}<div class="rpm-tip-t">${b.total}/min</div>`;
+function placeTip(html, x, y) {
+  rpmTip.innerHTML = html;
   rpmTip.style.display = 'block';
   const tw = rpmTip.offsetWidth, th = rpmTip.offsetHeight;
   let left = x + 12; let top = y + 12;
@@ -344,6 +357,14 @@ function showTip(bar, x, y) {
   rpmTip.style.left = left + 'px';
   rpmTip.style.top = top + 'px';
 }
+function showTip(bar, x, y) {
+  const b = bar._b;
+  if (!b) return;
+  const rowsHtml = RPM_ORDER.filter(([k]) => b[k])
+    .map(([k]) => `<div><span class="${clsColor[k] || 'muted'}">${k}</span> ${b[k]}</div>`).join('')
+    || '<div class="muted">no requests</div>';
+  placeTip(`<div class="rpm-tip-h">${stampMin(b.m)}</div>${rowsHtml}<div class="rpm-tip-t">${b.total}/min</div>`, x, y);
+}
 const hideTip = () => { rpmTip.style.display = 'none'; };
 chartEl.addEventListener('mousemove', (e) => {
   const bar = e.target.closest('.bar');
@@ -351,6 +372,18 @@ chartEl.addEventListener('mousemove', (e) => {
   else hideTip();
 });
 chartEl.addEventListener('mouseleave', hideTip);
+
+// pie-slice hover tooltip for the sources donut (reuses the same tooltip element)
+$('sources').addEventListener('mousemove', (e) => {
+  const sl = e.target.closest('.slice');
+  if (!sl) { hideTip(); return; }
+  placeTip(
+    `<div class="rpm-tip-h"><span class="dot" style="background:${sourceColor(sl.dataset.src)}"></span>${esc(sl.dataset.src)}</div>` +
+    `<div>${(+sl.dataset.count).toLocaleString()} lines</div><div class="rpm-tip-t">${sl.dataset.pct}%</div>`,
+    e.clientX, e.clientY,
+  );
+});
+$('sources').addEventListener('mouseleave', hideTip);
 
 loadNow();
 
