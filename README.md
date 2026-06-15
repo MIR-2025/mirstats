@@ -86,7 +86,10 @@ submission). Set `AUTO_REPORT=1` **and** an `ABUSEIPDB_KEY` to actually submit.
 - **ipinfo** — sign up at <https://ipinfo.io/signup> and copy your token from
   <https://ipinfo.io/account/token>.
 
-Private, loopback, and link-local IPs are never reported.
+Private, loopback, link-local, and CDN / reverse-proxy edge IPs (e.g. Cloudflare,
+see `lib/netblocks.js`) are never reported — when a site is fronted by a CDN, the
+logged IP is the CDN's edge, not the attacker. Make sure your origin logs the
+real client IP (`X-Forwarded-For` / `CF-Connecting-IP`) for accurate attribution.
 
 ## Requirements
 
