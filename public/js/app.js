@@ -498,6 +498,8 @@ const aiOut = $('ai-out');
 const aiDate = $('ai-date');
 const aiRun = $('ai-run');
 const aiRefresh = $('ai-refresh');
+const aiPdf = $('ai-pdf');
+let lastAnalysis = null; // { label, md } of the most recent successful analysis
 if (aiDate && !aiDate.value) {
   const n = new Date(); const p = (x) => String(x).padStart(2, '0');
   aiDate.value = `${n.getFullYear()}-${p(n.getMonth() + 1)}-${p(n.getDate())}`;
@@ -543,6 +545,8 @@ async function runAnalysis(refresh) {
     if (d.ok) {
       aiOut.className = 'ai-analysis';
       aiOut.innerHTML = (d.cached ? '<div class="ai-meta">cached · ↻ to refresh</div>' : '') + mdToHtml(d.analysis || '_(empty response)_');
+      lastAnalysis = { label: v, md: d.analysis || '' };
+      if (aiPdf) aiPdf.disabled = false;
     } else {
       aiOut.className = 'red small';
       aiOut.textContent = d.error || 'analysis failed';
@@ -556,3 +560,24 @@ async function runAnalysis(refresh) {
 }
 if (aiRun) aiRun.addEventListener('click', () => runAnalysis(false));
 if (aiRefresh) aiRefresh.addEventListener('click', () => runAnalysis(true));
+
+// Export the rendered analysis to PDF via the browser's print → Save as PDF.
+// Opens a clean light-themed doc; the <title> becomes the default file name.
+function downloadPdf() {
+  if (!lastAnalysis) return;
+  const title = `mirstats analysis — ${lastAnalysis.label}`;
+  const win = window.open('', '_blank');
+  if (!win) { aiOut.insertAdjacentHTML('afterbegin', '<div class="ai-meta">popup blocked — allow popups to export PDF</div>'); return; }
+  win.document.write(
+    `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title>` +
+    `<style>body{font:14px/1.55 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#111;max-width:760px;margin:32px auto;padding:0 22px;}` +
+    `h1{font-size:19px;margin:0 0 4px;}h2,h3,h4,h5,h6{margin:14px 0 4px;font-size:15px;}p{margin:0 0 8px;}ul,ol{margin:0 0 8px;padding-left:22px;}` +
+    `code{background:#f1f1f1;border-radius:3px;padding:0 3px;font-family:ui-monospace,Menlo,Consolas,monospace;}` +
+    `.meta{color:#777;font-size:12px;margin:0 0 18px;}@media print{body{margin:0;}}</style></head>` +
+    `<body><h1>${esc(title)}</h1><div class="meta">generated ${esc(new Date().toLocaleString())}</div>${mdToHtml(lastAnalysis.md)}</body></html>`,
+  );
+  win.document.close();
+  win.focus();
+  setTimeout(() => win.print(), 250);
+}
+if (aiPdf) aiPdf.addEventListener('click', downloadPdf);

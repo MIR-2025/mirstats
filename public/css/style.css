@@ -155,7 +155,7 @@ body.theme-light .rpm-date { color-scheme: light; }
 .ai-analysis code { font-family: var(--mono); font-size: 0.92em; background: var(--chip-bg); border-radius: 3px; padding: 0 3px; }
 .ai-analysis strong { color: var(--fg); font-weight: 700; }
 .ai-meta { font-size: 0.66rem; color: var(--muted); margin-bottom: 6px; }
-#ai-run:disabled, #ai-refresh:disabled { opacity: 0.5; cursor: default; }
+#ai-run:disabled, #ai-refresh:disabled, #ai-pdf:disabled { opacity: 0.5; cursor: default; }
 
 /* status split bar */
 .status-bar { display: flex; height: 22px; border-radius: 4px; overflow: hidden; font-size: 0.62rem; }
