@@ -99,7 +99,7 @@ function renderStats(d) {
     .filter(([k]) => d.byStatus[k])
     .map(([k, c]) => {
       const pct = (d.byStatus[k] / totalS) * 100;
-      return `<span class="${c}" style="width:${pct}%" title="${k}: ${d.byStatus[k]}">${pct > 7 ? k : ''}</span>`;
+      return `<span class="${c}" style="width:${pct}%" data-k="${k}" data-count="${d.byStatus[k]}" data-pct="${pct.toFixed(1)}">${pct > 7 ? k : ''}</span>`;
     })
     .join('');
   $('status-legend').innerHTML = order
@@ -398,6 +398,19 @@ $('sources').addEventListener('mousemove', (e) => {
   );
 });
 $('sources').addEventListener('mouseleave', hideTip);
+
+// status split bar — custom tooltip per status class (count + share)
+$('status-bar').addEventListener('mousemove', (e) => {
+  const seg = e.target.closest('span[data-k]');
+  if (!seg) { hideTip(); return; }
+  const k = seg.dataset.k;
+  placeTip(
+    `<div class="rpm-tip-h"><span class="${clsColor[k] || 'muted'}">${k}</span></div>` +
+    `<div>${(+seg.dataset.count).toLocaleString()} requests</div><div class="rpm-tip-t">${seg.dataset.pct}%</div>`,
+    e.clientX, e.clientY,
+  );
+});
+$('status-bar').addEventListener('mouseleave', hideTip);
 
 loadNow();
 

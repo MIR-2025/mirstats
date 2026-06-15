@@ -125,7 +125,7 @@ table.dash-table tr:hover td { background: var(--row-hover); }
 
 /* requests/min chart — per-minute stacked bars, horizontally scrollable */
 #rpm { display: flex; align-items: flex-end; gap: 0; height: 170px; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; overscroll-behavior-x: contain; }
-#rpm .bar { flex: 0 0 var(--barw, 4px); width: var(--barw, 4px); min-height: 1px; display: flex; flex-direction: column-reverse; overflow: hidden; }
+#rpm .bar { flex: 0 0 var(--barw, 4px); width: var(--barw, 4px); min-height: 1px; box-sizing: border-box; border-right: 1px solid var(--card-border); display: flex; flex-direction: column-reverse; overflow: hidden; }
 #rpm .seg { width: 100%; }
 #rpm .seg.s2 { background: var(--green); }
 #rpm .seg.s3 { background: var(--yellow); }
