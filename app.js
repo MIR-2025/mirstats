@@ -84,6 +84,7 @@ async function start() {
   // ── Graceful shutdown (clean PM2 restarts) ──
   const shutdown = async () => {
     server.close();
+    logStream.stop(); // flush cumulative stats to disk + close the upstream feed
     await redis.quit().catch(() => {});
     await closeMongo().catch(() => {});
     process.exit(0);

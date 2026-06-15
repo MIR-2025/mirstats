@@ -123,9 +123,9 @@ table.dash-table td.num { text-align: right; color: var(--num); white-space: now
 table.dash-table td.key { word-break: break-all; }
 table.dash-table tr:hover td { background: var(--row-hover); }
 
-/* requests/min bars — stacked by status class */
-#rpm { display: flex; align-items: flex-end; gap: 1px; height: 170px; }
-#rpm .bar { flex: 1 1 0; min-height: 1px; display: flex; flex-direction: column-reverse; overflow: hidden; border-radius: 1px; }
+/* requests/min chart — per-minute stacked bars, horizontally scrollable */
+#rpm { display: flex; align-items: flex-end; gap: 0; height: 170px; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; overscroll-behavior-x: contain; }
+#rpm .bar { flex: 0 0 4px; width: 4px; min-height: 1px; display: flex; flex-direction: column-reverse; overflow: hidden; }
 #rpm .seg { width: 100%; }
 #rpm .seg.s2 { background: var(--green); }
 #rpm .seg.s3 { background: var(--yellow); }
@@ -133,14 +133,13 @@ table.dash-table tr:hover td { background: var(--row-hover); }
 #rpm .seg.s5 { background: var(--crit); }
 #rpm .seg.so { background: var(--so-bg); }
 
-/* streaming ticker */
-#ticker { display: flex; overflow-x: auto; white-space: nowrap; font-family: var(--mono); font-size: 0.72rem; scrollbar-width: thin; }
-#ticker .tk { display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; border-right: 1px solid var(--card-border); flex: 0 0 auto; }
-#ticker .tk-d { color: var(--ts); }
-#ticker .tk-src { font-weight: 600; }
-#ticker .tk-path { display: inline-block; max-width: 280px; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
-#ticker .tk.atk { background: rgba(245,101,101,0.08); }
-#ticker .tk.alert { background: rgba(236,201,75,0.12); }
+/* req/min chart controls */
+.rpm-date { font-family: var(--mono); font-size: 0.66rem; color: var(--fg); background: var(--chip-bg);
+  border: 1px solid var(--card-border); border-radius: 4px; padding: 1px 4px; color-scheme: dark; }
+body.theme-light .rpm-date { color-scheme: light; }
+.rpm-now { font-family: var(--mono); font-size: 0.68rem; color: var(--header-fg); cursor: pointer;
+  background: var(--chip-bg); border: 1px solid var(--card-border); border-radius: 4px; padding: 1px 8px; line-height: 1.4; }
+.rpm-now:hover { color: var(--teal); border-color: var(--teal); background: var(--chip-hover); }
 
 /* status split bar */
 .status-bar { display: flex; height: 22px; border-radius: 4px; overflow: hidden; font-size: 0.62rem; }

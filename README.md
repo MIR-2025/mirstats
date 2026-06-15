@@ -14,8 +14,13 @@ client (no front-end build step).
 
 - **Live tail** — every incoming log line, colorized by source, with arrival
   timestamps. Click a **source** to filter the tail to just that site.
-- **Rolling stats** (in-memory, bounded): total requests, requests/min (60-min
-  sparkline + last-60s rate), 2xx/3xx/4xx/5xx split, error rate.
+- **Rolling stats**: total requests, requests/min, 2xx/3xx/4xx/5xx split, error
+  rate. Cumulative stats are snapshotted to disk (`data/stats-state.json`) so a
+  restart doesn't zero them.
+- **Scrollable req/min history** — a per-minute, status-stacked chart backed by a
+  1-year on-disk store (`data/rpm-history.jsonl`). Scroll or mouse-wheel left to
+  browse; jump to any date; older windows lazy-load at the edge so the DOM stays
+  bounded no matter how far back the data goes.
 - **Top paths / IPs / methods / sources.**
 - **Top attackers** — IPs hitting credential-probe / scanner paths (`.env`,
   `.git`, `wp-admin`, `xmlrpc`, `actuator`, `/etc/passwd`, …), each linking out to

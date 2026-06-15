@@ -89,22 +89,8 @@ function renderStats(d) {
   $('c-bots').textContent = d.counts.bots.toLocaleString();
   $('c-assetsub').textContent = `${d.counts.assets.toLocaleString()} asset hits`;
 
-  // rpm bars — stacked by status class
-  const rpmPeak = Math.max(1, ...d.rpm.map((b) => b.total));
-  $('rpm-peak').textContent = `peak ${rpmPeak}/min`;
-  const rpmOrder = [['2xx', 's2'], ['3xx', 's3'], ['4xx', 's4'], ['5xx', 's5'], ['other', 'so']];
-  $('rpm').innerHTML = d.rpm
-    .map((b) => {
-      const h = b.total ? Math.max(2, Math.round((b.total / rpmPeak) * 100)) : 0;
-      const segs = b.total
-        ? rpmOrder
-            .filter(([k]) => b[k])
-            .map(([k, c]) => `<span class="seg ${c}" style="height:${(b[k] / b.total) * 100}%" title="${k}: ${b[k]}"></span>`)
-            .join('')
-        : '';
-      return `<div class="bar" style="height:${h}%" title="${b.total}/min">${segs}</div>`;
-    })
-    .join('');
+  // (the requests/minute chart is driven separately by the history store — see
+  // the historical req/min chart section + chartLive())
 
   // status split bar
   const order = [['2xx', 's2'], ['3xx', 's3'], ['4xx', 's4'], ['5xx', 's5'], ['other', 'so']];
@@ -202,33 +188,140 @@ function clock(ms) {
   return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
 }
 
-// ── streaming ticker (horizontal, date-stamped, scrollable left/right) ──
-// Fed by the same live event stream as the tail; newest item is on the right and
-// the view auto-follows it unless you scroll back to look at history.
-const TICKER_MAX = 400;
-const tickerEl = $('ticker');
-let tickerFollow = true;
-tickerEl.addEventListener('scroll', () => {
-  tickerFollow = tickerEl.scrollLeft + tickerEl.clientWidth >= tickerEl.scrollWidth - 60;
-});
-function stamp(ms) {
-  const d = ms ? new Date(ms) : new Date();
+// ── historical req/min chart (scrollable, windowed, 1-year backing store) ──
+// Per-minute bars, newest at right. The live "now" minute ticks in; scroll or
+// mouse-wheel left to browse, and adjacent windows lazy-load at the edges. A
+// date picker jumps anywhere in the retained year. Only a bounded window is ever
+// in the DOM, so it stays smooth no matter how far back the data goes.
+const RPM_ORDER = [['2xx', 's2'], ['3xx', 's3'], ['4xx', 's4'], ['5xx', 's5'], ['other', 'so']];
+const BAR_PX = 4;     // must match #rpm .bar width in CSS
+const CHUNK = 360;    // minutes fetched per edge-load (6h)
+const DOM_MAX = 4320; // max bars kept in the DOM (3 days)
+const chartEl = $('rpm');
+let chartBars = [];   // loaded window, ascending by minute
+let chartPeak = 1;
+let following = true; // pinned to the live "now" edge
+let histLatest = Math.floor(Date.now() / 60000);
+let histEarliest = histLatest;
+let loadingEdge = false;
+
+function stampMin(m) {
+  const d = new Date(m * 60000);
   const p = (n) => String(n).padStart(2, '0');
-  return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
-function renderTicker(t) {
-  const el = document.createElement('span');
-  el.className = 'tk' + (t.alert ? ' alert' : t.attack ? ' atk' : '');
-  const meth = t.method ? `<span class="green">${esc(t.method)}</span> ` : '';
-  const st = t.status ? `<span class="${clsColor[t.cls] || 'muted'}">${t.status}</span> ` : '';
-  el.innerHTML =
-    `<span class="tk-d">${stamp(t.t)}</span> ` +
-    `<span class="tk-src" style="color:${sourceColor(t.source)}">[${esc(t.source)}]</span> ` +
-    `${meth}${st}<span class="tk-path">${esc(t.path || t.raw)}</span>`;
-  tickerEl.appendChild(el);
-  while (tickerEl.children.length > TICKER_MAX) tickerEl.removeChild(tickerEl.firstChild);
-  if (tickerFollow) tickerEl.scrollLeft = tickerEl.scrollWidth;
+function fillBar(el, b, peak) {
+  el.style.height = (b.total ? Math.max(2, Math.round((b.total / peak) * 100)) : 0) + '%';
+  el.title = `${stampMin(b.m)} · ${b.total}/min`;
+  el.innerHTML = b.total
+    ? RPM_ORDER.filter(([k]) => b[k]).map(([k, c]) => `<span class="seg ${c}" style="height:${(b[k] / b.total) * 100}%"></span>`).join('')
+    : '';
 }
+function makeBar(b, peak) {
+  const el = document.createElement('div');
+  el.className = 'bar';
+  el.dataset.m = b.m;
+  fillBar(el, b, peak);
+  return el;
+}
+function renderChart() {
+  chartPeak = Math.max(1, ...chartBars.map((b) => b.total));
+  const frag = document.createDocumentFragment();
+  for (const b of chartBars) frag.appendChild(makeBar(b, chartPeak));
+  chartEl.replaceChildren(frag);
+  const pk = $('rpm-peak');
+  if (pk) pk.textContent = `peak ${chartPeak}/min`;
+}
+async function fetchWindow(fromM, toM) {
+  try {
+    const d = await (await fetch(`/api/rpm?from=${fromM}&to=${toM}`)).json();
+    if (d.bounds) { histEarliest = d.bounds.earliest; histLatest = d.bounds.latest; }
+    return d.bars || [];
+  } catch { return []; }
+}
+async function loadNow() {
+  try {
+    const d = await (await fetch('/api/rpm')).json(); // default = last 12h → latest
+    if (d.bounds) { histEarliest = d.bounds.earliest; histLatest = d.bounds.latest; }
+    chartBars = d.bars || [];
+  } catch { chartBars = []; }
+  renderChart();
+  chartEl.scrollLeft = chartEl.scrollWidth;
+  following = true;
+}
+async function loadOlder() {
+  if (loadingEdge || !chartBars.length || chartBars[0].m <= histEarliest) return;
+  loadingEdge = true;
+  const toM = chartBars[0].m - 1;
+  const older = await fetchWindow(Math.max(histEarliest, toM - CHUNK + 1), toM);
+  if (older.length) {
+    chartBars = older.concat(chartBars);
+    if (chartBars.length > DOM_MAX) chartBars = chartBars.slice(0, DOM_MAX);
+    renderChart();
+    chartEl.scrollLeft += older.length * BAR_PX; // keep the viewport on the same bars
+  }
+  loadingEdge = false;
+}
+async function loadNewer() {
+  if (loadingEdge || !chartBars.length) return;
+  const last = chartBars[chartBars.length - 1].m;
+  if (last >= histLatest) return;
+  loadingEdge = true;
+  const newer = await fetchWindow(last + 1, Math.min(histLatest, last + CHUNK));
+  if (newer.length) {
+    chartBars = chartBars.concat(newer);
+    if (chartBars.length > DOM_MAX) chartBars = chartBars.slice(chartBars.length - DOM_MAX);
+    renderChart();
+  }
+  loadingEdge = false;
+}
+// live current-minute update from the periodic snapshot (only while following)
+function chartLive(d) {
+  if (d.histBounds) histLatest = Math.max(histLatest, d.histBounds.latest);
+  const cur = d.rpmCur;
+  if (!cur || !following || !chartBars.length) return;
+  const last = chartBars[chartBars.length - 1];
+  if (cur.m === last.m) {
+    chartBars[chartBars.length - 1] = cur;
+    if (cur.total > chartPeak) renderChart();
+    else fillBar(chartEl.lastElementChild, cur, chartPeak);
+  } else if (cur.m > last.m) {
+    for (let m = last.m + 1; m < cur.m; m++) chartBars.push({ m, '2xx': 0, '3xx': 0, '4xx': 0, '5xx': 0, other: 0, total: 0 });
+    chartBars.push(cur);
+    if (chartBars.length > DOM_MAX) chartBars = chartBars.slice(chartBars.length - DOM_MAX);
+    renderChart();
+  }
+  chartEl.scrollLeft = chartEl.scrollWidth;
+}
+// mouse wheel = horizontal scroll while hovering the chart
+chartEl.addEventListener('wheel', (e) => {
+  if (!e.deltaY) return;
+  e.preventDefault();
+  chartEl.scrollLeft += e.deltaY;
+}, { passive: false });
+// follow/browse state + lazy edge loading
+chartEl.addEventListener('scroll', () => {
+  const atRight = chartEl.scrollLeft + chartEl.clientWidth >= chartEl.scrollWidth - 8;
+  const last = chartBars.length ? chartBars[chartBars.length - 1].m : 0;
+  following = atRight && last >= histLatest - 1;
+  if (chartEl.scrollLeft < BAR_PX * 30) loadOlder();
+  else if (atRight && !following) loadNewer();
+});
+// date picker → jump to ±6h around the chosen time
+const rpmDate = $('rpm-date');
+if (rpmDate) rpmDate.addEventListener('change', async () => {
+  const ms = Date.parse(rpmDate.value);
+  if (isNaN(ms)) return;
+  const c = Math.floor(ms / 60000);
+  following = false;
+  chartBars = await fetchWindow(c - 360, c + 360);
+  renderChart();
+  chartEl.scrollLeft = (chartEl.scrollWidth - chartEl.clientWidth) / 2;
+});
+// "now" button → jump back to the live edge
+const rpmNow = $('rpm-now');
+if (rpmNow) rpmNow.addEventListener('click', () => loadNow());
+loadNow();
 
 // The tail is persisted across reloads in localStorage (capped at TAIL_MAX).
 // Saves are throttled so a busy feed doesn't hammer storage on every line.
@@ -266,7 +359,6 @@ function appendTail(t) {
   tailLog.push(t);
   while (tailLog.length > TAIL_MAX) tailLog.shift();
   renderTail(t);
-  renderTicker(t);
   saveTailSoon();
 }
 
@@ -276,7 +368,7 @@ function loadTail() {
   try { arr = JSON.parse(localStorage.getItem(TAIL_KEY) || '[]'); } catch { arr = []; }
   if (!Array.isArray(arr) || !arr.length) return;
   tailLog = arr.slice(-TAIL_MAX);
-  for (const t of tailLog) { renderTail(t); renderTicker(t); }
+  for (const t of tailLog) renderTail(t);
   applyTailFilter();
 }
 
@@ -286,13 +378,11 @@ $('tail-clear').addEventListener('click', () => {
   if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
   try { localStorage.removeItem(TAIL_KEY); } catch { /* ignore */ }
   tailEl.innerHTML = '';
-  tickerEl.innerHTML = '';
-  tickerFollow = true;
 });
 
 loadTail();
 
-socket.on('stats', renderStats);
+socket.on('stats', (d) => { renderStats(d); chartLive(d); });
 socket.on('tail', appendTail);
 
 // Initial paint from the JSON API in case the first snapshot is slow.

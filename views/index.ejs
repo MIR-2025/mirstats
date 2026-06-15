@@ -54,22 +54,17 @@
     </div>
   </div>
 
-  <!-- streaming ticker -->
-  <div class="card mb-3">
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <span>ticker</span>
-      <span class="muted small">scroll ↔ &middot; newest at right</span>
-    </div>
-    <div class="card-body p-0"><div id="ticker"></div></div>
-  </div>
-
   <div class="row g-3">
     <!-- left column -->
     <div class="col-lg-7">
       <div class="card mb-3">
-        <div class="card-header d-flex justify-content-between">
-          <span>requests / minute &middot; last 60 min</span>
-          <span class="muted" id="rpm-peak"></span>
+        <div class="card-header d-flex justify-content-between align-items-center gap-2 flex-wrap">
+          <span>requests / minute &middot; history</span>
+          <span class="d-flex align-items-center gap-2">
+            <input type="datetime-local" id="rpm-date" class="rpm-date" title="Jump to a date / time">
+            <button type="button" id="rpm-now" class="rpm-now" title="Jump to the live edge">now</button>
+            <span class="muted" id="rpm-peak"></span>
+          </span>
         </div>
         <div class="card-body">
           <div id="rpm"></div>
