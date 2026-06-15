@@ -212,10 +212,12 @@ function clock(ms) {
 // date picker jumps anywhere in the retained year. Only a bounded window is ever
 // in the DOM, so it stays smooth no matter how far back the data goes.
 const RPM_ORDER = [['2xx', 's2'], ['3xx', 's3'], ['4xx', 's4'], ['5xx', 's5'], ['other', 'so']];
-const BAR_PX = 4;     // must match #rpm .bar width in CSS
 const CHUNK = 360;    // minutes fetched per edge-load (6h)
 const DOM_MAX = 4320; // max bars kept in the DOM (3 days)
+let barW = 4;         // bar pixel width — Ctrl+wheel zooms it; mirrors CSS --barw
+try { const z = +localStorage.getItem('mirstats.barw'); if (z >= 1 && z <= 24) barW = z; } catch { /* ignore */ }
 const chartEl = $('rpm');
+chartEl.style.setProperty('--barw', barW + 'px');
 let chartBars = [];   // loaded window, ascending by minute
 let chartPeak = 1;
 let following = true; // pinned to the live "now" edge
@@ -276,7 +278,7 @@ async function loadOlder() {
     chartBars = older.concat(chartBars);
     if (chartBars.length > DOM_MAX) chartBars = chartBars.slice(0, DOM_MAX);
     renderChart();
-    chartEl.scrollLeft += older.length * BAR_PX; // keep the viewport on the same bars
+    chartEl.scrollLeft += older.length * barW; // keep the viewport on the same bars
   }
   loadingEdge = false;
 }
@@ -315,14 +317,26 @@ function chartLive(d) {
 chartEl.addEventListener('wheel', (e) => {
   if (!e.deltaY) return;
   e.preventDefault();
-  chartEl.scrollLeft += e.deltaY;
+  if (e.ctrlKey) {
+    // Ctrl+wheel = zoom bar width, anchored at the bar under the cursor.
+    const cursorX = e.clientX - chartEl.getBoundingClientRect().left;
+    const idx = (chartEl.scrollLeft + cursorX) / barW; // fractional bar under cursor
+    const next = Math.min(24, Math.max(1, +(barW * (e.deltaY < 0 ? 1.15 : 1 / 1.15)).toFixed(2)));
+    if (next === barW) return;
+    barW = next;
+    chartEl.style.setProperty('--barw', barW + 'px');
+    try { localStorage.setItem('mirstats.barw', barW); } catch { /* ignore */ }
+    chartEl.scrollLeft = idx * barW - cursorX; // keep that bar under the cursor
+  } else {
+    chartEl.scrollLeft += e.deltaY;
+  }
 }, { passive: false });
 // follow/browse state + lazy edge loading
 chartEl.addEventListener('scroll', () => {
   const atRight = chartEl.scrollLeft + chartEl.clientWidth >= chartEl.scrollWidth - 8;
   const last = chartBars.length ? chartBars[chartBars.length - 1].m : 0;
   following = atRight && last >= histLatest - 1;
-  if (chartEl.scrollLeft < BAR_PX * 30) loadOlder();
+  if (chartEl.scrollLeft < barW * 30) loadOlder();
   else if (atRight && !following) loadNewer();
 });
 // date picker → jump to ±6h around the chosen time
