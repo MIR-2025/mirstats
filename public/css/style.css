@@ -140,6 +140,11 @@ body.theme-light .rpm-date { color-scheme: light; }
 .rpm-now { font-family: var(--mono); font-size: 0.68rem; color: var(--header-fg); cursor: pointer;
   background: var(--chip-bg); border: 1px solid var(--card-border); border-radius: 4px; padding: 1px 8px; line-height: 1.4; }
 .rpm-now:hover { color: var(--teal); border-color: var(--teal); background: var(--chip-hover); }
+.rpm-tip { position: fixed; z-index: 50; pointer-events: none; font-family: var(--mono); font-size: 0.7rem;
+  background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 5px; padding: 5px 8px;
+  color: var(--fg); box-shadow: 0 4px 14px rgba(0,0,0,0.45); white-space: nowrap; line-height: 1.5; }
+.rpm-tip-h { color: var(--header-fg); margin-bottom: 2px; }
+.rpm-tip-t { color: var(--muted); border-top: 1px solid var(--card-border); margin-top: 3px; padding-top: 2px; }
 
 /* status split bar */
 .status-bar { display: flex; height: 22px; border-radius: 4px; overflow: hidden; font-size: 0.62rem; }

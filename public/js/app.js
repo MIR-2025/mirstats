@@ -212,7 +212,7 @@ function stampMin(m) {
 }
 function fillBar(el, b, peak) {
   el.style.height = (b.total ? Math.max(2, Math.round((b.total / peak) * 100)) : 0) + '%';
-  el.title = `${stampMin(b.m)} · ${b.total}/min`;
+  el._b = b; // backing data for the custom tooltip (no native title -> no delay)
   el.innerHTML = b.total
     ? RPM_ORDER.filter(([k]) => b[k]).map(([k, c]) => `<span class="seg ${c}" style="height:${(b[k] / b.total) * 100}%"></span>`).join('')
     : '';
@@ -321,6 +321,37 @@ if (rpmDate) rpmDate.addEventListener('change', async () => {
 // "now" button → jump back to the live edge
 const rpmNow = $('rpm-now');
 if (rpmNow) rpmNow.addEventListener('click', () => loadNow());
+
+// custom chart tooltip — instant (no native title delay), themed, showing the
+// per-status-class breakdown for the hovered minute. One reused element + event
+// delegation, so it's cheap even with thousands of bars.
+const rpmTip = document.createElement('div');
+rpmTip.className = 'rpm-tip';
+rpmTip.style.display = 'none';
+document.body.appendChild(rpmTip);
+function showTip(bar, x, y) {
+  const b = bar._b;
+  if (!b) return;
+  const rowsHtml = RPM_ORDER.filter(([k]) => b[k])
+    .map(([k]) => `<div><span class="${clsColor[k] || 'muted'}">${k}</span> ${b[k]}</div>`).join('')
+    || '<div class="muted">no requests</div>';
+  rpmTip.innerHTML = `<div class="rpm-tip-h">${stampMin(b.m)}</div>${rowsHtml}<div class="rpm-tip-t">${b.total}/min</div>`;
+  rpmTip.style.display = 'block';
+  const tw = rpmTip.offsetWidth, th = rpmTip.offsetHeight;
+  let left = x + 12; let top = y + 12;
+  if (left + tw > window.innerWidth - 8) left = x - tw - 12;
+  if (top + th > window.innerHeight - 8) top = y - th - 12;
+  rpmTip.style.left = left + 'px';
+  rpmTip.style.top = top + 'px';
+}
+const hideTip = () => { rpmTip.style.display = 'none'; };
+chartEl.addEventListener('mousemove', (e) => {
+  const bar = e.target.closest('.bar');
+  if (bar) showTip(bar, e.clientX, e.clientY);
+  else hideTip();
+});
+chartEl.addEventListener('mouseleave', hideTip);
+
 loadNow();
 
 // The tail is persisted across reloads in localStorage (capped at TAIL_MAX).
