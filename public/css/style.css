@@ -123,10 +123,15 @@ table.dash-table td.num { text-align: right; color: var(--num); white-space: now
 table.dash-table td.key { word-break: break-all; }
 table.dash-table tr:hover td { background: var(--row-hover); }
 
-/* requests/min bars */
+/* requests/min bars — stacked by status class */
 #rpm { display: flex; align-items: flex-end; gap: 1px; height: 70px; }
-#rpm .bar { flex: 1 1 0; background: var(--bar); min-height: 1px; transition: height .3s; }
-#rpm .bar.hot { background: var(--teal); }
+#rpm .bar { flex: 1 1 0; min-height: 1px; display: flex; flex-direction: column-reverse; overflow: hidden; border-radius: 1px; }
+#rpm .seg { width: 100%; }
+#rpm .seg.s2 { background: var(--green); }
+#rpm .seg.s3 { background: var(--yellow); }
+#rpm .seg.s4 { background: var(--red); }
+#rpm .seg.s5 { background: var(--crit); }
+#rpm .seg.so { background: var(--so-bg); }
 
 /* status split bar */
 .status-bar { display: flex; height: 22px; border-radius: 4px; overflow: hidden; font-size: 0.62rem; }

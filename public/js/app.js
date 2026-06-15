@@ -89,14 +89,20 @@ function renderStats(d) {
   $('c-bots').textContent = d.counts.bots.toLocaleString();
   $('c-assetsub').textContent = `${d.counts.assets.toLocaleString()} asset hits`;
 
-  // rpm bars
-  const peak = Math.max(1, ...d.rpm);
-  $('rpm-peak').textContent = `peak ${peak}/min`;
+  // rpm bars — stacked by status class
+  const rpmPeak = Math.max(1, ...d.rpm.map((b) => b.total));
+  $('rpm-peak').textContent = `peak ${rpmPeak}/min`;
+  const rpmOrder = [['2xx', 's2'], ['3xx', 's3'], ['4xx', 's4'], ['5xx', 's5'], ['other', 'so']];
   $('rpm').innerHTML = d.rpm
-    .map((v) => {
-      const pct = Math.round((v / peak) * 100);
-      const hot = v >= peak * 0.8 && v > 0;
-      return `<div class="bar${hot ? ' hot' : ''}" style="height:${v ? Math.max(2, pct) : 0}%" title="${v}/min"></div>`;
+    .map((b) => {
+      const h = b.total ? Math.max(2, Math.round((b.total / rpmPeak) * 100)) : 0;
+      const segs = b.total
+        ? rpmOrder
+            .filter(([k]) => b[k])
+            .map(([k, c]) => `<span class="seg ${c}" style="height:${(b[k] / b.total) * 100}%" title="${k}: ${b[k]}"></span>`)
+            .join('')
+        : '';
+      return `<div class="bar" style="height:${h}%" title="${b.total}/min">${segs}</div>`;
     })
     .join('');
 
