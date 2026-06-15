@@ -138,7 +138,7 @@ function renderStats(d) {
     const badge = r.mode === 'submitted'
       ? `<span class="${r.ok ? 'green' : 'red'}">${r.ok ? 'reported' : 'failed' + (r.status ? ' ' + r.status : '')}</span>`
       : '<span class="yellow">flagged</span>';
-    return `<div class="rep"><span class="atk-ip">${esc(r.ip)}</span> <span class="muted">${r.hits}×</span> ${badge}${loc ? ` <span class="muted">${esc(loc)}</span>` : ''}</div>`;
+    return `<div class="rep"><span class="atk-ip">${esc(r.ip)}</span> <span class="muted">${r.hits}×${r.reason === 'burst' ? ' burst' : ''}</span> ${badge}${loc ? ` <span class="muted">${esc(loc)}</span>` : ''}</div>`;
   }).join('');
 }
 
@@ -219,6 +219,7 @@ let barW = 4;         // bar pixel width — Ctrl+wheel zooms it; mirrors CSS --
 try { const z = +localStorage.getItem('mirstats.barw'); if (z >= 1 && z <= 24) barW = z; } catch { /* ignore */ }
 const chartEl = $('rpm');
 chartEl.style.setProperty('--barw', barW + 'px');
+const rpmAxis = $('rpm-axis');
 let chartBars = [];   // loaded window, ascending by minute
 let chartPeak = 1;
 let following = true; // pinned to the live "now" edge
@@ -246,6 +247,34 @@ function makeBar(b, peak) {
   fillBar(el, b, peak);
   return el;
 }
+// rolling time axis: clock-aligned ticks that scroll in sync with the bars; the
+// label interval widens/narrows with the zoom so labels never crowd.
+function niceInterval(mins) {
+  const steps = [1, 2, 5, 10, 15, 30, 60, 120, 180, 360, 720, 1440];
+  for (const s of steps) if (s >= mins) return s;
+  return 2880;
+}
+function syncAxis() {
+  if (rpmAxis) rpmAxis.style.transform = `translateX(${-chartEl.scrollLeft}px)`;
+}
+function renderAxis() {
+  if (!rpmAxis) return;
+  if (!chartBars.length) { rpmAxis.innerHTML = ''; return; }
+  rpmAxis.style.width = (chartBars.length * barW) + 'px';
+  const step = niceInterval(Math.ceil(52 / barW)); // ~52px between labels
+  const p = (n) => String(n).padStart(2, '0');
+  let html = '';
+  for (let i = 0; i < chartBars.length; i++) {
+    const m = chartBars[i].m;
+    if (m % step !== 0) continue; // clock-aligned ticks
+    const d = new Date(m * 60000);
+    const midnight = d.getHours() === 0 && d.getMinutes() === 0;
+    const label = midnight ? `${p(d.getMonth() + 1)}-${p(d.getDate())}` : `${p(d.getHours())}:${p(d.getMinutes())}`;
+    html += `<span class="rpm-tick${midnight ? ' day' : ''}" style="left:${i * barW}px">${label}</span>`;
+  }
+  rpmAxis.innerHTML = html;
+  syncAxis();
+}
 function renderChart() {
   chartPeak = Math.max(1, ...chartBars.map((b) => b.total));
   const frag = document.createDocumentFragment();
@@ -253,6 +282,7 @@ function renderChart() {
   chartEl.replaceChildren(frag);
   const pk = $('rpm-peak');
   if (pk) pk.textContent = `peak ${chartPeak}/min`;
+  renderAxis();
 }
 async function fetchWindow(fromM, toM) {
   try {
@@ -334,12 +364,14 @@ chartEl.addEventListener('wheel', (e) => {
     chartEl.style.setProperty('--barw', barW + 'px');
     try { localStorage.setItem('mirstats.barw', barW); } catch { /* ignore */ }
     chartEl.scrollLeft = idx * barW - cursorX; // keep that bar under the cursor
+    renderAxis();
   } else {
     chartEl.scrollLeft += e.deltaY;
   }
 }, { passive: false });
 // follow/browse state + lazy edge loading
 chartEl.addEventListener('scroll', () => {
+  syncAxis();
   const atRight = chartEl.scrollLeft + chartEl.clientWidth >= chartEl.scrollWidth - 8;
   const last = chartBars.length ? chartBars[chartBars.length - 1].m : 0;
   following = atRight && last >= histLatest - 1;
