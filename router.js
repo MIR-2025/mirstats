@@ -30,7 +30,7 @@ export function createRouter({ redis, io, logStream } = {}) {
     const bounds = logStream.rpmBounds();
     const to = Number.isFinite(+req.query.to) && req.query.to !== '' ? Math.floor(+req.query.to) : bounds.latest;
     const from = Number.isFinite(+req.query.from) && req.query.from !== '' ? Math.floor(+req.query.from) : to - 720; // default last 12h
-    res.json({ bars: logStream.rpmWindow(from, to), bounds, maxSpan: logStream.rpmMaxSpan });
+    res.json({ bars: logStream.rpmWindow(from, to), bounds, maxSpan: logStream.rpmMaxSpan, bucket: logStream.rpmBucket });
   });
 
   // AI log analysis for a time range (minute epochs). Server-side Anthropic call.
@@ -113,14 +113,16 @@ export function createRouter({ redis, io, logStream } = {}) {
         { $group: { _id: null, min: { $min: '$t' }, max: { $max: '$t' } } },
       ]).toArray();
       const MAXSPAN = 4 * 24 * 60;
+      const bucket = logStream.rpmBucket || 1;
       const ipLatest = mm ? Math.floor(mm.max.getTime() / 60000) : Math.floor(Date.now() / 60000);
       const ipEarliest = mm ? Math.floor(mm.min.getTime() / 60000) : ipLatest;
-      const toMin = (req.query.to !== '' && Number.isFinite(+req.query.to)) ? Math.floor(+req.query.to) : ipLatest;
-      const fromMin = (req.query.from !== '' && Number.isFinite(+req.query.from)) ? Math.floor(+req.query.from) : toMin - 720;
-      const from = Math.max(fromMin, toMin - MAXSPAN);
+      const toRaw = (req.query.to !== '' && Number.isFinite(+req.query.to)) ? Math.floor(+req.query.to) : ipLatest;
+      const fromRaw = (req.query.from !== '' && Number.isFinite(+req.query.from)) ? Math.floor(+req.query.from) : toRaw - 720;
+      const to = Math.floor(toRaw / bucket) * bucket;
+      const from = Math.floor(Math.max(fromRaw, toRaw - MAXSPAN) / bucket) * bucket;
       const rows = await events.aggregate([
-        { $match: { ip: rx, t: { $gte: new Date(from * 60000), $lte: new Date((toMin + 1) * 60000 - 1) } } },
-        { $group: { _id: { m: { $floor: { $divide: [{ $toLong: '$t' }, 60000] } }, cls: '$cls' }, n: { $sum: 1 } } },
+        { $match: { ip: rx, t: { $gte: new Date(from * 60000), $lte: new Date((to + bucket) * 60000 - 1) } } },
+        { $group: { _id: { m: { $multiply: [{ $floor: { $divide: [{ $toLong: '$t' }, 60000 * bucket] } }, bucket] }, cls: '$cls' }, n: { $sum: 1 } } },
       ]).toArray();
       const map = new Map();
       for (const r of rows) {
@@ -130,11 +132,11 @@ export function createRouter({ redis, io, logStream } = {}) {
         b[cls] = (b[cls] || 0) + r.n;
       }
       const bars = [];
-      for (let m = from; m <= toMin; m++) {
+      for (let m = from; m <= to; m += bucket) {
         const b = map.get(m) || { '2xx': 0, '3xx': 0, '4xx': 0, '5xx': 0, other: 0 };
         bars.push({ m, ...b, total: b['2xx'] + b['3xx'] + b['4xx'] + b['5xx'] + b.other });
       }
-      res.json({ bars, bounds: { earliest: ipEarliest, latest: ipLatest }, maxSpan: MAXSPAN });
+      res.json({ bars, bounds: { earliest: ipEarliest, latest: ipLatest }, maxSpan: MAXSPAN, bucket });
     } catch (e) {
       res.status(500).json({ error: String(e.message || e) });
     }

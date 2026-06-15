@@ -227,6 +227,7 @@ let histLatest = Math.floor(Date.now() / 60000);
 let histEarliest = histLatest;
 let loadingEdge = false;
 let chartIp = null; // when set, the chart is filtered to this IP / /24 prefix
+let chartBucket = 1; // minutes per bar (from the server; 1 unless RPM_BUCKET_MIN is set)
 
 function stampMin(m) {
   const d = new Date(m * 60000);
@@ -261,7 +262,8 @@ function renderAxis() {
   if (!rpmAxis) return;
   if (!chartBars.length) { rpmAxis.innerHTML = ''; return; }
   rpmAxis.style.width = (chartBars.length * barW) + 'px';
-  const step = niceInterval(Math.ceil(52 / barW)); // ~52px between labels
+  let step = niceInterval(Math.ceil(52 / barW)); // ~52px between labels
+  if (step % chartBucket !== 0) step = Math.ceil(step / chartBucket) * chartBucket; // align to bar size
   const p = (n) => String(n).padStart(2, '0');
   let html = '';
   for (let i = 0; i < chartBars.length; i++) {
@@ -291,6 +293,7 @@ async function fetchWindow(fromM, toM) {
       : `/api/rpm?from=${fromM}&to=${toM}`;
     const d = await (await fetch(url)).json();
     if (d.bounds) { histEarliest = d.bounds.earliest; histLatest = d.bounds.latest; }
+    if (d.bucket) chartBucket = d.bucket;
     return d.bars || [];
   } catch { return []; }
 }
@@ -299,6 +302,7 @@ async function loadNow() {
     const url = chartIp ? `/api/rpm-ip?ip=${encodeURIComponent(chartIp)}` : '/api/rpm'; // default = recent window
     const d = await (await fetch(url)).json();
     if (d.bounds) { histEarliest = d.bounds.earliest; histLatest = d.bounds.latest; }
+    if (d.bucket) chartBucket = d.bucket;
     chartBars = d.bars || [];
   } catch { chartBars = []; }
   renderChart();
@@ -343,7 +347,7 @@ function chartLive(d) {
     if (cur.total > chartPeak) renderChart();
     else fillBar(chartEl.lastElementChild, cur, chartPeak);
   } else if (cur.m > last.m) {
-    for (let m = last.m + 1; m < cur.m; m++) chartBars.push({ m, '2xx': 0, '3xx': 0, '4xx': 0, '5xx': 0, other: 0, total: 0 });
+    for (let m = last.m + chartBucket; m < cur.m; m += chartBucket) chartBars.push({ m, '2xx': 0, '3xx': 0, '4xx': 0, '5xx': 0, other: 0, total: 0 });
     chartBars.push(cur);
     if (chartBars.length > DOM_MAX) chartBars = chartBars.slice(chartBars.length - DOM_MAX);
     renderChart();
@@ -374,7 +378,7 @@ chartEl.addEventListener('scroll', () => {
   syncAxis();
   const atRight = chartEl.scrollLeft + chartEl.clientWidth >= chartEl.scrollWidth - 8;
   const last = chartBars.length ? chartBars[chartBars.length - 1].m : 0;
-  following = atRight && last >= histLatest - 1;
+  following = atRight && last + chartBucket > histLatest;
   if (chartEl.scrollLeft < barW * 30) loadOlder();
   else if (atRight && !following) loadNewer();
 });
