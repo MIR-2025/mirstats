@@ -165,7 +165,7 @@ body.theme-light .rpm-date { color-scheme: light; }
 
 /* sources donut */
 #sources .pie-wrap { display: flex; justify-content: center; padding: 2px 0 8px; }
-.pie { width: 122px; height: 122px; }
+.pie { width: 244px; height: 244px; max-width: 100%; }
 .pie .slice { cursor: pointer; transition: opacity .15s; }
 .pie .slice:hover { stroke-width: 5.5; }
 .pie .slice.dim { opacity: 0.3; }
