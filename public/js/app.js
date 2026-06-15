@@ -168,6 +168,14 @@ const TAIL_MAX = 150;
 const tailEl = $('tail');
 let autoScroll = true;
 let tailFilter = null; // active source filter, or null = show all
+let tailIpFilter = ''; // active IP / /24 prefix filter (empty = show all)
+
+// A tail line is hidden if it fails the active source OR the active IP filter.
+function tailHidden(source, ip) {
+  if (tailFilter && source !== tailFilter) return true;
+  if (tailIpFilter && !(ip === tailIpFilter || (ip && ip.startsWith(tailIpFilter + '.')))) return true;
+  return false;
+}
 
 // Click a source chip to scope the WHOLE dashboard — stats and tail — to that
 // source; re-click the chip (or the ✕) clears back to all sources.
@@ -184,6 +192,14 @@ $('sources').addEventListener('click', (e) => {
   setSourceFilter(tailFilter === s ? null : s);
 });
 $('tail-filter').addEventListener('click', () => setSourceFilter(null));
+// Filter the live tail by an IP or /24 (e.g. "195.178.110" or "195.178.110.0/24").
+const tailIp = $('tail-ip');
+if (tailIp) tailIp.addEventListener('input', () => {
+  let f = tailIp.value.trim().replace(/\/\d+$/, ''); // strip a trailing /24
+  if (f.endsWith('.0')) f = f.slice(0, -2); // 1.2.3.0 -> 1.2.3 (a /24 prefix)
+  tailIpFilter = f;
+  applyTailFilter();
+});
 
 function syncSourceChips() {
   document.querySelectorAll('#sources .src-chip').forEach((c) =>
@@ -191,7 +207,7 @@ function syncSourceChips() {
 }
 
 function applyTailFilter() {
-  for (const ln of tailEl.children) ln.hidden = tailFilter && ln.dataset.source !== tailFilter;
+  for (const ln of tailEl.children) ln.hidden = tailHidden(ln.dataset.source, ln.dataset.ip);
   const ind = $('tail-filter');
   ind.innerHTML = tailFilter
     ? `showing only <span style="color:${sourceColor(tailFilter)}">${esc(tailFilter)}</span> <span class="clear">✕</span>`
@@ -507,7 +523,8 @@ function renderTail(t) {
   const st = t.status ? `<span class="${clsColor[t.cls] || 'muted'}">${t.status}</span> ` : '';
   const ip = t.ip ? `<span class="muted">${esc(t.ip)}</span> ` : '';
   div.dataset.source = t.source || 'mir';
-  if (tailFilter && div.dataset.source !== tailFilter) div.hidden = true;
+  div.dataset.ip = t.ip || '';
+  div.hidden = tailHidden(div.dataset.source, div.dataset.ip);
   div.innerHTML = ts + src + meth + st + ip + `<span>${esc(t.path || t.raw)}</span>`;
   tailEl.appendChild(div);
   while (tailEl.children.length > TAIL_MAX) tailEl.removeChild(tailEl.firstChild);
