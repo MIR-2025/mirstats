@@ -202,6 +202,34 @@ function clock(ms) {
   return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
 }
 
+// ── streaming ticker (horizontal, date-stamped, scrollable left/right) ──
+// Fed by the same live event stream as the tail; newest item is on the right and
+// the view auto-follows it unless you scroll back to look at history.
+const TICKER_MAX = 400;
+const tickerEl = $('ticker');
+let tickerFollow = true;
+tickerEl.addEventListener('scroll', () => {
+  tickerFollow = tickerEl.scrollLeft + tickerEl.clientWidth >= tickerEl.scrollWidth - 60;
+});
+function stamp(ms) {
+  const d = ms ? new Date(ms) : new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+function renderTicker(t) {
+  const el = document.createElement('span');
+  el.className = 'tk' + (t.alert ? ' alert' : t.attack ? ' atk' : '');
+  const meth = t.method ? `<span class="green">${esc(t.method)}</span> ` : '';
+  const st = t.status ? `<span class="${clsColor[t.cls] || 'muted'}">${t.status}</span> ` : '';
+  el.innerHTML =
+    `<span class="tk-d">${stamp(t.t)}</span> ` +
+    `<span class="tk-src" style="color:${sourceColor(t.source)}">[${esc(t.source)}]</span> ` +
+    `${meth}${st}<span class="tk-path">${esc(t.path || t.raw)}</span>`;
+  tickerEl.appendChild(el);
+  while (tickerEl.children.length > TICKER_MAX) tickerEl.removeChild(tickerEl.firstChild);
+  if (tickerFollow) tickerEl.scrollLeft = tickerEl.scrollWidth;
+}
+
 // The tail is persisted across reloads in localStorage (capped at TAIL_MAX).
 // Saves are throttled so a busy feed doesn't hammer storage on every line.
 const TAIL_KEY = 'mirstats.tail.v1';
@@ -238,6 +266,7 @@ function appendTail(t) {
   tailLog.push(t);
   while (tailLog.length > TAIL_MAX) tailLog.shift();
   renderTail(t);
+  renderTicker(t);
   saveTailSoon();
 }
 
@@ -247,7 +276,7 @@ function loadTail() {
   try { arr = JSON.parse(localStorage.getItem(TAIL_KEY) || '[]'); } catch { arr = []; }
   if (!Array.isArray(arr) || !arr.length) return;
   tailLog = arr.slice(-TAIL_MAX);
-  for (const t of tailLog) renderTail(t);
+  for (const t of tailLog) { renderTail(t); renderTicker(t); }
   applyTailFilter();
 }
 
@@ -257,6 +286,8 @@ $('tail-clear').addEventListener('click', () => {
   if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
   try { localStorage.removeItem(TAIL_KEY); } catch { /* ignore */ }
   tailEl.innerHTML = '';
+  tickerEl.innerHTML = '';
+  tickerFollow = true;
 });
 
 loadTail();
