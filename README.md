@@ -28,6 +28,9 @@ client (no front-end build step).
 - **Auto-report** (optional, off by default) — when an IP crosses a hit
   threshold, report it to AbuseIPDB enriched with ipinfo + sample log lines. See
   [Auto-reporting attackers](#auto-reporting-attackers-optional).
+- **IP search** — type an IP or `/24` prefix to search a Mongo-backed per-request
+  log (TTL-pruned) over a date range; matches autocomplete in a dropdown, and
+  picking one shows that IP/subnet's status breakdown, top paths, and time span.
 - **Alerts feed** — surfaces `*** ALERT ***` lines from the upstream feed.
 - **Tolerant parser** — extracts source / method / path / status / IP generically,
   so it handles nginx, Apache combined, JSON-ish, and custom formats without

@@ -581,3 +581,55 @@ function downloadPdf() {
   setTimeout(() => win.print(), 250);
 }
 if (aiPdf) aiPdf.addEventListener('click', downloadPdf);
+
+// ── IP search (Mongo-backed typeahead) ── type an IP or /24 prefix; the dropdown
+// fills with matching IPs in the date range; pick one to see its breakdown.
+const ipq = $('ipq');
+if (ipq) {
+  const ipqFrom = $('ipq-from'); const ipqTo = $('ipq-to');
+  const ipqList = $('ipq-list'); const ipqResult = $('ipq-result');
+  const fmt = (d) => { const p = (x) => String(x).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
+  if (ipqTo && !ipqTo.value) ipqTo.value = fmt(new Date());
+  if (ipqFrom && !ipqFrom.value) ipqFrom.value = fmt(new Date(Date.now() - 7 * 86400 * 1000));
+  const rangeMs = () => ({
+    from: ipqFrom.value ? new Date(ipqFrom.value + 'T00:00:00').getTime() : 0,
+    to: ipqTo.value ? new Date(ipqTo.value + 'T23:59:59').getTime() : Date.now(),
+  });
+  let ipqTimer = null;
+  async function ipqSearch() {
+    const q = ipq.value.trim();
+    if (q.length < 2) { ipqList.innerHTML = ''; return; }
+    const { from, to } = rangeMs();
+    try {
+      const rows = await (await fetch(`/api/ips?q=${encodeURIComponent(q)}&from=${from}&to=${to}`)).json();
+      if (!Array.isArray(rows) || !rows.length) { ipqList.innerHTML = '<div class="ipq-empty">no matches in range</div>'; return; }
+      ipqList.innerHTML = rows.map((r) =>
+        `<div class="ipq-item" data-ip="${esc(r.ip)}"><span class="ip">${esc(r.ip)}</span><span class="ipq-c">${r.count.toLocaleString()}${r.attacks ? ` · <span class="red">${r.attacks} atk</span>` : ''}</span></div>`,
+      ).join('');
+    } catch { ipqList.innerHTML = '<div class="ipq-empty">search failed</div>'; }
+  }
+  async function ipqDetail(ip) {
+    const { from, to } = rangeMs();
+    ipqResult.innerHTML = '<div class="muted small">loading…</div>';
+    try {
+      const d = await (await fetch(`/api/ip?ip=${encodeURIComponent(ip)}&from=${from}&to=${to}`)).json();
+      if (d.error) { ipqResult.innerHTML = `<div class="red small">${esc(d.error)}</div>`; return; }
+      const st = ['2xx', '3xx', '4xx', '5xx', 'other'].filter((k) => d.byStatus[k]).map((k) => `<span class="${clsColor[k] || 'muted'}">${k} ${d.byStatus[k]}</span>`).join(' ');
+      const paths = (d.topPaths || []).slice(0, 6).map((p) => `<div class="ipq-path"><span class="key">${esc(p.path || '/')}</span><span class="num">${p.count}</span></div>`).join('') || '<div class="muted small">—</div>';
+      const span = d.first ? `${new Date(d.first).toLocaleString()} → ${new Date(d.last).toLocaleString()}` : '—';
+      ipqResult.innerHTML =
+        `<div class="ipq-head"><span class="atk-ip">${esc(d.ip)}</span> <span class="muted">${d.count.toLocaleString()} reqs${d.distinctIps > 1 ? ` · ${d.distinctIps} IPs` : ''}${d.attacks ? ` · <span class="red">${d.attacks} attacks</span>` : ''}</span></div>` +
+        `<div class="small muted ipq-span">${esc(span)}</div>` +
+        `<div class="ipq-status">${st || '—'}</div>${paths}`;
+    } catch { ipqResult.innerHTML = '<div class="red small">failed</div>'; }
+  }
+  ipq.addEventListener('input', () => { clearTimeout(ipqTimer); ipqTimer = setTimeout(ipqSearch, 250); });
+  ipqList.addEventListener('click', (e) => {
+    const item = e.target.closest('.ipq-item');
+    if (!item) return;
+    ipq.value = item.dataset.ip;
+    ipqList.innerHTML = '';
+    ipqDetail(item.dataset.ip);
+  });
+  [ipqFrom, ipqTo].forEach((el) => el && el.addEventListener('change', () => { if (ipq.value.trim().length >= 2) ipqSearch(); }));
+}

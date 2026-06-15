@@ -106,6 +106,20 @@
     <!-- right column -->
     <div class="col-lg-5">
       <div class="card mb-3">
+        <div class="card-header">IP search</div>
+        <div class="card-body py-2">
+          <div class="ipq-row">
+            <input type="text" id="ipq" class="ipq-input" placeholder="IP or /24 prefix — e.g. 195.178.110" autocomplete="off" spellcheck="false">
+          </div>
+          <div class="ipq-row">
+            <input type="date" id="ipq-from" class="rpm-date" title="From date">
+            <input type="date" id="ipq-to" class="rpm-date" title="To date">
+          </div>
+          <div id="ipq-list" class="ipq-list"></div>
+          <div id="ipq-result" class="ipq-result"></div>
+        </div>
+      </div>
+      <div class="card mb-3">
         <div class="card-header">sources</div>
         <div class="card-body py-2"><div id="sources"></div></div>
       </div>

@@ -157,6 +157,27 @@ body.theme-light .rpm-date { color-scheme: light; }
 .ai-meta { font-size: 0.66rem; color: var(--muted); margin-bottom: 6px; }
 #ai-run:disabled, #ai-refresh:disabled, #ai-pdf:disabled { opacity: 0.5; cursor: default; }
 
+/* IP search */
+.ipq-row { display: flex; gap: 6px; margin-bottom: 6px; }
+.ipq-input { flex: 1; font-family: var(--mono); font-size: 0.74rem; color: var(--fg); background: var(--chip-bg);
+  border: 1px solid var(--card-border); border-radius: 4px; padding: 3px 7px; }
+.ipq-list { max-height: 180px; overflow-y: auto; }
+.ipq-item { display: flex; justify-content: space-between; gap: 8px; font-family: var(--mono); font-size: 0.72rem;
+  padding: 3px 6px; cursor: pointer; border-radius: 3px; }
+.ipq-item:hover { background: var(--chip-hover); }
+.ipq-item .ip { color: var(--fg); }
+.ipq-c { color: var(--muted); white-space: nowrap; }
+.ipq-empty { color: var(--muted); font-size: 0.72rem; padding: 4px 6px; }
+.ipq-result { margin-top: 8px; }
+.ipq-result:empty { display: none; }
+.ipq-head { font-family: var(--mono); font-size: 0.78rem; margin-bottom: 2px; }
+.ipq-span { margin-bottom: 5px; }
+.ipq-status { display: flex; gap: 8px; flex-wrap: wrap; font-family: var(--mono); font-size: 0.72rem; margin-bottom: 6px; }
+.ipq-path { display: flex; justify-content: space-between; gap: 8px; font-family: var(--mono); font-size: 0.72rem;
+  padding: 1px 0; border-top: 1px solid var(--table-border); }
+.ipq-path .key { word-break: break-all; }
+.ipq-path .num { color: var(--num); white-space: nowrap; }
+
 /* status split bar */
 .status-bar { display: flex; height: 22px; border-radius: 4px; overflow: hidden; font-size: 0.62rem; }
 .status-bar > span { display: flex; align-items: center; justify-content: center; color: var(--on-bar); font-weight: 700; min-width: 0; }
