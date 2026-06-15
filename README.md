@@ -77,6 +77,11 @@ submission). Set `AUTO_REPORT=1` **and** an `ABUSEIPDB_KEY` to actually submit.
 | `IPINFO_KEY` | — | Lite token (see below); enrichment only — reporting works without it |
 | `ABUSEIPDB_CATEGORIES` | `21` | comma list; `21` = Web App Attack |
 | `REPORT_SKIP_IPS` | — | comma list of IPs to never report (e.g. your egress) |
+| `REPORT_DATA_DIR` | `./data` | where dedup state + the `reports.jsonl` audit log are kept |
+
+Reporting is **file-persisted, no database**: per-IP cooldown/dedup state lives in
+`data/reporter-state.json` (so a restart doesn't re-report), and every report is
+appended to `data/reports.jsonl` as a permanent, greppable audit trail.
 
 **Getting the keys** (both have free tiers):
 

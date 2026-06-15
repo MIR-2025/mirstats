@@ -9,6 +9,9 @@ node_modules/
 # Runtime logs
 logs/*.log
 
+# Reporter persistence (dedup state + audit log)
+data/
+
 # OS / editor cruft
 .DS_Store
 *.swp
