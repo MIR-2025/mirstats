@@ -160,6 +160,7 @@ function renderSources(items) {
     `<span class="chip src-chip${s.key === tailFilter ? ' active' : ''}" data-src="${esc(s.key)}"><span class="dot" style="background:${sourceColor(s.key)}"></span>${esc(s.key)}<span class="c">${s.count.toLocaleString()}</span></span>`
   ).join('');
   el.innerHTML = `<div class="pie-wrap"><svg class="pie" viewBox="0 0 36 36" role="img" aria-label="sources by volume">${slices}</svg></div><div class="src-legend">${legend}</div>`;
+  if (typeof sourceHover !== 'undefined' && sourceHover) highlightSource(sourceHover); // re-apply hover after re-render
 }
 
 // ── live tail ──
@@ -387,17 +388,30 @@ chartEl.addEventListener('mousemove', (e) => {
 });
 chartEl.addEventListener('mouseleave', hideTip);
 
-// pie-slice hover tooltip for the sources donut (reuses the same tooltip element)
+// sources donut: hover a slice OR a legend chip → brighten it, dim the rest
+// (Anthropic-console style); slices also get a tooltip. Hover state is re-applied
+// after each re-render (renderSources) so it doesn't flicker on snapshots.
+let sourceHover = null;
+function highlightSource(src) {
+  sourceHover = src;
+  const root = $('sources');
+  root.classList.toggle('hovering', src != null);
+  root.querySelectorAll('.slice, .src-chip').forEach((el) =>
+    el.classList.toggle('hot', src != null && el.dataset.src === src));
+}
 $('sources').addEventListener('mousemove', (e) => {
-  const sl = e.target.closest('.slice');
-  if (!sl) { hideTip(); return; }
-  placeTip(
-    `<div class="rpm-tip-h"><span class="dot" style="background:${sourceColor(sl.dataset.src)}"></span>${esc(sl.dataset.src)}</div>` +
-    `<div>${(+sl.dataset.count).toLocaleString()} lines</div><div class="rpm-tip-t">${sl.dataset.pct}%</div>`,
-    e.clientX, e.clientY,
-  );
+  const el = e.target.closest('.slice, .src-chip');
+  if (!el) { highlightSource(null); hideTip(); return; }
+  highlightSource(el.dataset.src);
+  if (el.classList.contains('slice')) {
+    placeTip(
+      `<div class="rpm-tip-h"><span class="dot" style="background:${sourceColor(el.dataset.src)}"></span>${esc(el.dataset.src)}</div>` +
+      `<div>${(+el.dataset.count).toLocaleString()} lines</div><div class="rpm-tip-t">${el.dataset.pct}%</div>`,
+      e.clientX, e.clientY,
+    );
+  } else hideTip();
 });
-$('sources').addEventListener('mouseleave', hideTip);
+$('sources').addEventListener('mouseleave', () => { highlightSource(null); hideTip(); });
 
 // status split bar — custom tooltip per status class (count + share)
 $('status-bar').addEventListener('mousemove', (e) => {
@@ -483,11 +497,33 @@ fetch('/api/stats').then((r) => r.json()).then((d) => { if (d && d.counts) rende
 const aiOut = $('ai-out');
 const aiDate = $('ai-date');
 const aiRun = $('ai-run');
+const aiRefresh = $('ai-refresh');
 if (aiDate && !aiDate.value) {
   const n = new Date(); const p = (x) => String(x).padStart(2, '0');
   aiDate.value = `${n.getFullYear()}-${p(n.getMonth() + 1)}-${p(n.getDate())}`;
 }
-if (aiRun) aiRun.addEventListener('click', async () => {
+// Minimal, safe markdown → HTML (escapes first; covers what Claude emits).
+function mdToHtml(md) {
+  const esc2 = (s) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  const inline = (s) => esc2(s)
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/(^|[^*])\*([^*\s][^*]*)\*/g, '$1<em>$2</em>');
+  let html = ''; let list = null;
+  const closeList = () => { if (list) { html += `</${list}>`; list = null; } };
+  for (const raw of String(md).split('\n')) {
+    const line = raw.trim();
+    if (!line) { closeList(); continue; }
+    let m;
+    if ((m = line.match(/^(#{1,6})\s+(.*)$/))) { closeList(); html += `<h${Math.min(6, m[1].length + 2)}>${inline(m[2])}</h${Math.min(6, m[1].length + 2)}>`; }
+    else if ((m = line.match(/^[-*]\s+(.*)$/))) { if (list !== 'ul') { closeList(); list = 'ul'; html += '<ul>'; } html += `<li>${inline(m[1])}</li>`; }
+    else if ((m = line.match(/^\d+\.\s+(.*)$/))) { if (list !== 'ol') { closeList(); list = 'ol'; html += '<ol>'; } html += `<li>${inline(m[1])}</li>`; }
+    else { closeList(); html += `<p>${inline(line)}</p>`; }
+  }
+  closeList();
+  return html;
+}
+async function runAnalysis(refresh) {
   const v = aiDate && aiDate.value;
   if (!v) return;
   const start = new Date(v + 'T00:00:00'); // local midnight of the chosen day
@@ -495,19 +531,28 @@ if (aiRun) aiRun.addEventListener('click', async () => {
   const fromMin = Math.floor(start.getTime() / 60000);
   const endMin = Math.floor((start.getTime() + 24 * 3600 * 1000 - 60000) / 60000);
   const toMin = Math.min(Math.floor(Date.now() / 60000), endMin); // don't go past "now"
-  aiRun.disabled = true;
+  if (aiRun) aiRun.disabled = true;
+  if (aiRefresh) aiRefresh.disabled = true;
   aiOut.className = 'muted small';
-  aiOut.textContent = 'Analyzing…';
+  aiOut.textContent = refresh ? 'Re-analyzing…' : 'Analyzing…';
   try {
-    const r = await fetch('/api/analyze', {
+    const d = await (await fetch('/api/analyze', {
       method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ from: fromMin, to: toMin, label: v }),
-    });
-    const d = await r.json();
-    if (d.ok) { aiOut.className = 'ai-analysis'; aiOut.textContent = d.analysis || '(empty response)'; }
-    else { aiOut.className = 'red small'; aiOut.textContent = d.error || 'analysis failed'; }
+      body: JSON.stringify({ from: fromMin, to: toMin, label: v, refresh }),
+    })).json();
+    if (d.ok) {
+      aiOut.className = 'ai-analysis';
+      aiOut.innerHTML = (d.cached ? '<div class="ai-meta">cached · ↻ to refresh</div>' : '') + mdToHtml(d.analysis || '_(empty response)_');
+    } else {
+      aiOut.className = 'red small';
+      aiOut.textContent = d.error || 'analysis failed';
+    }
   } catch {
-    aiOut.className = 'red small'; aiOut.textContent = 'request failed';
+    aiOut.className = 'red small';
+    aiOut.textContent = 'request failed';
   }
-  aiRun.disabled = false;
-});
+  if (aiRun) aiRun.disabled = false;
+  if (aiRefresh) aiRefresh.disabled = false;
+}
+if (aiRun) aiRun.addEventListener('click', () => runAnalysis(false));
+if (aiRefresh) aiRefresh.addEventListener('click', () => runAnalysis(true));

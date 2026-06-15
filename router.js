@@ -39,7 +39,7 @@ export function createRouter({ redis, io, logStream } = {}) {
       return res.status(400).json({ ok: false, error: 'invalid range' });
     }
     try {
-      res.json(await analyzeRange({ fromMin, toMin, label: String(req.body?.label || ''), logStream }));
+      res.json(await analyzeRange({ fromMin, toMin, label: String(req.body?.label || ''), refresh: !!req.body?.refresh, logStream }));
     } catch (e) {
       res.status(500).json({ ok: false, error: String(e.message || e) });
     }
