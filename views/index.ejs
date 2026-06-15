@@ -85,6 +85,17 @@
       </div>
 
       <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center gap-2 flex-wrap">
+          <span>AI analysis</span>
+          <span class="d-flex align-items-center gap-2">
+            <input type="date" id="ai-date" class="rpm-date" title="Day to analyze">
+            <button type="button" id="ai-run" class="rpm-now">analyze</button>
+          </span>
+        </div>
+        <div class="card-body py-2"><div id="ai-out" class="muted small">Pick a day and click analyze.</div></div>
+      </div>
+
+      <div class="card mb-3">
         <div class="card-header">recent alerts</div>
         <div class="card-body py-2"><div id="alerts"><div class="muted small">none yet</div></div></div>
       </div>

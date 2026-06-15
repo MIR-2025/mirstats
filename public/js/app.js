@@ -478,3 +478,36 @@ socket.on('tail', appendTail);
 
 // Initial paint from the JSON API in case the first snapshot is slow.
 fetch('/api/stats').then((r) => r.json()).then((d) => { if (d && d.counts) renderStats(d); }).catch(() => {});
+
+// ── AI log analysis ── pick a day, server summarizes it via the Anthropic API.
+const aiOut = $('ai-out');
+const aiDate = $('ai-date');
+const aiRun = $('ai-run');
+if (aiDate && !aiDate.value) {
+  const n = new Date(); const p = (x) => String(x).padStart(2, '0');
+  aiDate.value = `${n.getFullYear()}-${p(n.getMonth() + 1)}-${p(n.getDate())}`;
+}
+if (aiRun) aiRun.addEventListener('click', async () => {
+  const v = aiDate && aiDate.value;
+  if (!v) return;
+  const start = new Date(v + 'T00:00:00'); // local midnight of the chosen day
+  if (isNaN(start)) return;
+  const fromMin = Math.floor(start.getTime() / 60000);
+  const endMin = Math.floor((start.getTime() + 24 * 3600 * 1000 - 60000) / 60000);
+  const toMin = Math.min(Math.floor(Date.now() / 60000), endMin); // don't go past "now"
+  aiRun.disabled = true;
+  aiOut.className = 'muted small';
+  aiOut.textContent = 'Analyzing…';
+  try {
+    const r = await fetch('/api/analyze', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ from: fromMin, to: toMin, label: v }),
+    });
+    const d = await r.json();
+    if (d.ok) { aiOut.className = 'ai-analysis'; aiOut.textContent = d.analysis || '(empty response)'; }
+    else { aiOut.className = 'red small'; aiOut.textContent = d.error || 'analysis failed'; }
+  } catch {
+    aiOut.className = 'red small'; aiOut.textContent = 'request failed';
+  }
+  aiRun.disabled = false;
+});

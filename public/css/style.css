@@ -146,6 +146,10 @@ body.theme-light .rpm-date { color-scheme: light; }
 .rpm-tip-h { color: var(--header-fg); margin-bottom: 2px; }
 .rpm-tip-t { color: var(--muted); border-top: 1px solid var(--card-border); margin-top: 3px; padding-top: 2px; }
 
+/* AI analysis panel */
+.ai-analysis { font-size: 0.78rem; line-height: 1.55; white-space: pre-wrap; word-break: break-word; color: var(--fg); }
+#ai-run:disabled { opacity: 0.5; cursor: default; }
+
 /* status split bar */
 .status-bar { display: flex; height: 22px; border-radius: 4px; overflow: hidden; font-size: 0.62rem; }
 .status-bar > span { display: flex; align-items: center; justify-content: center; color: var(--on-bar); font-weight: 700; min-width: 0; }
