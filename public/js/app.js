@@ -225,6 +225,7 @@ let following = true; // pinned to the live "now" edge
 let histLatest = Math.floor(Date.now() / 60000);
 let histEarliest = histLatest;
 let loadingEdge = false;
+let chartIp = null; // when set, the chart is filtered to this IP / /24 prefix
 
 function stampMin(m) {
   const d = new Date(m * 60000);
@@ -255,14 +256,18 @@ function renderChart() {
 }
 async function fetchWindow(fromM, toM) {
   try {
-    const d = await (await fetch(`/api/rpm?from=${fromM}&to=${toM}`)).json();
+    const url = chartIp
+      ? `/api/rpm-ip?ip=${encodeURIComponent(chartIp)}&from=${fromM}&to=${toM}`
+      : `/api/rpm?from=${fromM}&to=${toM}`;
+    const d = await (await fetch(url)).json();
     if (d.bounds) { histEarliest = d.bounds.earliest; histLatest = d.bounds.latest; }
     return d.bars || [];
   } catch { return []; }
 }
 async function loadNow() {
   try {
-    const d = await (await fetch('/api/rpm')).json(); // default = last 12h → latest
+    const url = chartIp ? `/api/rpm-ip?ip=${encodeURIComponent(chartIp)}` : '/api/rpm'; // default = recent window
+    const d = await (await fetch(url)).json();
     if (d.bounds) { histEarliest = d.bounds.earliest; histLatest = d.bounds.latest; }
     chartBars = d.bars || [];
   } catch { chartBars = []; }
@@ -298,6 +303,7 @@ async function loadNewer() {
 }
 // live current-minute update from the periodic snapshot (only while following)
 function chartLive(d) {
+  if (chartIp) return; // filtered to an IP — static view, no global live tick
   if (d.histBounds) histLatest = Math.max(histLatest, d.histBounds.latest);
   const cur = d.rpmCur;
   if (!cur || !following || !chartBars.length) return;
@@ -354,6 +360,19 @@ if (rpmDate) rpmDate.addEventListener('change', async () => {
 // "now" button → jump back to the live edge
 const rpmNow = $('rpm-now');
 if (rpmNow) rpmNow.addEventListener('click', () => loadNow());
+
+// IP filter on the chart (driven by the IP search) — shows a tag + ✕ to clear.
+function updateChartIpTag() {
+  const el = $('rpm-ip');
+  if (el) el.innerHTML = chartIp ? `<span class="rpm-ip-tag">▸ ${esc(chartIp)} <span class="clear">✕</span></span>` : '';
+}
+function setChartIp(ip) {
+  chartIp = ip || null;
+  updateChartIpTag();
+  loadNow();
+}
+const rpmIpEl = $('rpm-ip');
+if (rpmIpEl) rpmIpEl.addEventListener('click', () => setChartIp(null));
 
 // custom chart tooltip — instant (no native title delay), themed, showing the
 // per-status-class breakdown for the hovered minute. One reused element + event
@@ -630,6 +649,7 @@ if (ipq) {
     ipq.value = item.dataset.ip;
     ipqList.innerHTML = '';
     ipqDetail(item.dataset.ip);
+    setChartIp(item.dataset.ip); // also filter the req/min chart to this IP/24
   });
   [ipqFrom, ipqTo].forEach((el) => el && el.addEventListener('change', () => { if (ipq.value.trim().length >= 2) ipqSearch(); }));
 }

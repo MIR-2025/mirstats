@@ -100,6 +100,46 @@ export function createRouter({ redis, io, logStream } = {}) {
     }
   });
 
+  // Per-minute req/min for one IP / /24 prefix, from the event log — lets the
+  // chart filter to a searched IP. Same bar shape as /api/rpm (zero-filled).
+  router.get('/api/rpm-ip', async (req, res) => {
+    try {
+      const ip = String(req.query.ip || '').trim();
+      if (!ip) return res.status(400).json({ error: 'ip required' });
+      const rx = new RegExp('^' + escapeRx(ip));
+      const events = collections.events();
+      const [mm] = await events.aggregate([
+        { $match: { ip: rx } },
+        { $group: { _id: null, min: { $min: '$t' }, max: { $max: '$t' } } },
+      ]).toArray();
+      const MAXSPAN = 4 * 24 * 60;
+      const ipLatest = mm ? Math.floor(mm.max.getTime() / 60000) : Math.floor(Date.now() / 60000);
+      const ipEarliest = mm ? Math.floor(mm.min.getTime() / 60000) : ipLatest;
+      const toMin = (req.query.to !== '' && Number.isFinite(+req.query.to)) ? Math.floor(+req.query.to) : ipLatest;
+      const fromMin = (req.query.from !== '' && Number.isFinite(+req.query.from)) ? Math.floor(+req.query.from) : toMin - 720;
+      const from = Math.max(fromMin, toMin - MAXSPAN);
+      const rows = await events.aggregate([
+        { $match: { ip: rx, t: { $gte: new Date(from * 60000), $lte: new Date((toMin + 1) * 60000 - 1) } } },
+        { $group: { _id: { m: { $floor: { $divide: [{ $toLong: '$t' }, 60000] } }, cls: '$cls' }, n: { $sum: 1 } } },
+      ]).toArray();
+      const map = new Map();
+      for (const r of rows) {
+        const cls = r._id.cls || 'other';
+        let b = map.get(r._id.m);
+        if (!b) { b = { '2xx': 0, '3xx': 0, '4xx': 0, '5xx': 0, other: 0 }; map.set(r._id.m, b); }
+        b[cls] = (b[cls] || 0) + r.n;
+      }
+      const bars = [];
+      for (let m = from; m <= toMin; m++) {
+        const b = map.get(m) || { '2xx': 0, '3xx': 0, '4xx': 0, '5xx': 0, other: 0 };
+        bars.push({ m, ...b, total: b['2xx'] + b['3xx'] + b['4xx'] + b['5xx'] + b.other });
+      }
+      res.json({ bars, bounds: { earliest: ipEarliest, latest: ipLatest }, maxSpan: MAXSPAN });
+    } catch (e) {
+      res.status(500).json({ error: String(e.message || e) });
+    }
+  });
+
   // Health check.
   router.get('/healthz', (req, res) => res.json({ ok: true }));
 

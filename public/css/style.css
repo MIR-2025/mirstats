@@ -133,6 +133,10 @@ table.dash-table tr:hover td { background: var(--row-hover); }
 #rpm .seg.s5 { background: var(--crit); }
 #rpm .seg.so { background: var(--so-bg); }
 
+/* req/min chart IP filter tag */
+.rpm-ip-tag { font-family: var(--mono); font-size: 0.7rem; color: var(--teal); cursor: pointer; margin-left: 6px; text-transform: none; letter-spacing: 0; }
+.rpm-ip-tag .clear { color: var(--red); }
+
 /* req/min chart controls */
 .rpm-date { font-family: var(--mono); font-size: 0.66rem; color: var(--fg); background: var(--chip-bg);
   border: 1px solid var(--card-border); border-radius: 4px; padding: 1px 4px; color-scheme: dark; }
