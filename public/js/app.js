@@ -232,6 +232,7 @@ function clock(ms) {
 const RPM_ORDER = [['2xx', 's2'], ['3xx', 's3'], ['4xx', 's4'], ['5xx', 's5'], ['other', 'so']];
 const CHUNK = 360;    // minutes fetched per edge-load (6h)
 const DOM_MAX = 4320; // max bars kept in the DOM (3 days)
+const EDGE_PX = 300;  // start lazy-loading older bars within this many px of the left edge
 let barW = 4;         // bar pixel width — Ctrl+wheel zooms it; mirrors CSS --barw
 try { const z = +localStorage.getItem('mirstats.barw'); if (z >= 1 && z <= 24) barW = z; } catch { /* ignore */ }
 const chartEl = $('rpm');
@@ -398,7 +399,7 @@ chartEl.addEventListener('scroll', () => {
   const atRight = chartEl.scrollLeft + chartEl.clientWidth >= chartEl.scrollWidth - 8;
   const last = chartBars.length ? chartBars[chartBars.length - 1].m : 0;
   following = atRight && last + chartBucket > histLatest;
-  if (chartEl.scrollLeft < barW * 30) loadOlder();
+  if (chartEl.scrollLeft < EDGE_PX) loadOlder();
   else if (atRight && !following) loadNewer();
 });
 // date picker → jump to ±6h around the chosen time
