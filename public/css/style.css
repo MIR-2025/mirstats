@@ -137,7 +137,7 @@ table.dash-table tr:hover td { background: var(--row-hover); }
 .rpm-axis-wrap { position: relative; height: 26px; overflow: hidden; }
 .rpm-axis { position: relative; height: 26px; will-change: transform; }
 .rpm-tick { position: absolute; top: 5px; font-family: var(--mono); font-size: 0.58rem; color: var(--yellow); white-space: nowrap; transform-origin: top left; transform: rotate(40deg); }
-.rpm-tick.day { color: var(--yellow); font-weight: 700; }
+.rpm-tick.day { color: var(--yellow); font-weight: 700; transform: rotate(0deg); }
 .rpm-tick::before { content: ''; position: absolute; top: -5px; left: 0; width: 1px; height: 4px; background: var(--card-border); }
 
 /* req/min chart IP filter tag */
