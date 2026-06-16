@@ -242,6 +242,7 @@ body.theme-light .rpm-date { color-scheme: light; }
 /* auto-reports */
 #reports .rep { font-family: var(--mono); font-size: 0.72rem; padding: 2px 0; border-bottom: 1px solid var(--tail-border); word-break: break-all; }
 #reports .rep:last-child { border-bottom: 0; }
+#reports .rep-t { color: var(--ts); margin-right: 4px; }
 
 #attackers .atk-ip { color: var(--red); }
 #attackers .svc-row { white-space: nowrap; }

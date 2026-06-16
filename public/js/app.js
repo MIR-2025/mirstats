@@ -138,7 +138,8 @@ function renderStats(d) {
     const badge = r.mode === 'submitted'
       ? `<span class="${r.ok ? 'green' : 'red'}">${r.ok ? 'reported' : 'failed' + (r.status ? ' ' + r.status : '')}</span>`
       : '<span class="yellow">flagged</span>';
-    return `<div class="rep"><span class="atk-ip">${esc(r.ip)}</span> <span class="muted">${r.hits}×${r.reason === 'burst' ? ' burst' : ''}</span> ${badge}${loc ? ` <span class="muted">${esc(loc)}</span>` : ''}</div>`;
+    const ts = r.t ? `<span class="rep-t">${stampMin(Math.floor(r.t / 60000))}</span> ` : '';
+    return `<div class="rep">${ts}<span class="atk-ip">${esc(r.ip)}</span> <span class="muted">${r.hits}×${r.reason === 'burst' ? ' burst' : ''}</span> ${badge}${loc ? ` <span class="muted">${esc(loc)}</span>` : ''}</div>`;
   }).join('');
 }
 
