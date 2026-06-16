@@ -88,6 +88,18 @@ main {
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+/* collapsible panel headers (top paths → methods) */
+.dash .card-header.acc-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+}
+.dash .card-header.acc-toggle.collapsed { border-bottom-color: transparent; }
+.dash .card-header.acc-toggle:hover { color: var(--teal); }
+.acc-caret { transition: transform 0.15s ease; opacity: 0.7; }
+.card-header.acc-toggle:not(.collapsed) .acc-caret { transform: rotate(90deg); }
 .stat-card .value {
   font-family: var(--mono);
   font-size: 1.9rem;

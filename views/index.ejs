@@ -126,24 +126,44 @@
         <div class="card-body py-2"><div id="sources"></div></div>
       </div>
       <div class="card mb-3">
-        <div class="card-header">top paths</div>
-        <div class="card-body py-2"><table class="dash-table"><tbody id="paths"></tbody></table></div>
+        <div class="card-header acc-toggle collapsed" role="button" data-bs-toggle="collapse" data-bs-target="#acc-paths" aria-expanded="false" aria-controls="acc-paths">
+          <span>top paths</span><span class="acc-caret">▸</span>
+        </div>
+        <div id="acc-paths" class="collapse">
+          <div class="card-body py-2"><table class="dash-table"><tbody id="paths"></tbody></table></div>
+        </div>
       </div>
       <div class="card mb-3">
-        <div class="card-header">top IPs</div>
-        <div class="card-body py-2"><table class="dash-table"><tbody id="ips"></tbody></table></div>
+        <div class="card-header acc-toggle collapsed" role="button" data-bs-toggle="collapse" data-bs-target="#acc-ips" aria-expanded="false" aria-controls="acc-ips">
+          <span>top IPs</span><span class="acc-caret">▸</span>
+        </div>
+        <div id="acc-ips" class="collapse">
+          <div class="card-body py-2"><table class="dash-table"><tbody id="ips"></tbody></table></div>
+        </div>
       </div>
       <div class="card mb-3">
-        <div class="card-header red">top attackers</div>
-        <div class="card-body py-2"><table class="dash-table"><tbody id="attackers"></tbody></table></div>
+        <div class="card-header red acc-toggle collapsed" role="button" data-bs-toggle="collapse" data-bs-target="#acc-attackers" aria-expanded="false" aria-controls="acc-attackers">
+          <span>top attackers</span><span class="acc-caret">▸</span>
+        </div>
+        <div id="acc-attackers" class="collapse">
+          <div class="card-body py-2"><table class="dash-table"><tbody id="attackers"></tbody></table></div>
+        </div>
       </div>
       <div class="card mb-3">
-        <div class="card-header">auto-reports</div>
-        <div class="card-body py-2"><div id="reports"><div class="muted small">none yet</div></div></div>
+        <div class="card-header acc-toggle collapsed" role="button" data-bs-toggle="collapse" data-bs-target="#acc-reports" aria-expanded="false" aria-controls="acc-reports">
+          <span>auto-reports</span><span class="acc-caret">▸</span>
+        </div>
+        <div id="acc-reports" class="collapse">
+          <div class="card-body py-2"><div id="reports"><div class="muted small">none yet</div></div></div>
+        </div>
       </div>
       <div class="card mb-3">
-        <div class="card-header">methods</div>
-        <div class="card-body py-2"><div id="methods"></div></div>
+        <div class="card-header acc-toggle collapsed" role="button" data-bs-toggle="collapse" data-bs-target="#acc-methods" aria-expanded="false" aria-controls="acc-methods">
+          <span>methods</span><span class="acc-caret">▸</span>
+        </div>
+        <div id="acc-methods" class="collapse">
+          <div class="card-body py-2"><div id="methods"></div></div>
+        </div>
       </div>
     </div>
   </div>
