@@ -238,6 +238,14 @@ body.theme-light .rpm-date { color-scheme: light; }
 .tail-ip { font-family: var(--mono); font-size: 0.66rem; color: var(--fg); background: var(--chip-bg);
   border: 1px solid var(--card-border); border-radius: 4px; padding: 1px 6px; width: 108px; }
 #tail .ln[hidden] { display: none; }
+/* "click a bar" pinned-bucket banner */
+#rpm .bar { cursor: pointer; }
+.tail-pin { font-family: var(--mono); font-size: 0.68rem; color: var(--teal); white-space: nowrap; }
+.tail-pin:empty { display: none; }
+.tail-pin .pin-dot { color: var(--yellow); margin-right: 2px; }
+.tail-pin .pin-x { cursor: pointer; color: var(--header-fg); border: 1px solid var(--card-border);
+  border-radius: 4px; padding: 0 5px; margin-left: 4px; }
+.tail-pin .pin-x:hover { color: var(--red); border-color: var(--red); }
 
 /* live tail */
 #tail { font-family: var(--mono); font-size: 0.72rem; max-height: 360px; overflow-y: auto; }

@@ -142,6 +142,39 @@ export function createRouter({ redis, io, logStream } = {}) {
     }
   });
 
+  // Stored requests within a time window — backs "click a chart bar to see its
+  // logs". from/to are ms epochs; optional source + ip/prefix filters mirror the
+  // tail's own filters. Ascending by time, capped so a busy bucket stays bounded.
+  router.get('/api/events', async (req, res) => {
+    try {
+      const from = new Date(Number(req.query.from) || 0);
+      const to = new Date(Number(req.query.to) || Date.now());
+      const limit = Math.min(2000, Math.max(1, Number(req.query.limit) || 1000));
+      const match = { t: { $gte: from, $lt: to } };
+      const source = String(req.query.source || '').trim();
+      if (source) match.source = source;
+      const ip = String(req.query.ip || '').trim();
+      if (ip) match.ip = new RegExp('^' + escapeRx(ip));
+      const rows = await collections.events()
+        .find(match, { projection: { _id: 0 } })
+        .sort({ t: 1 })
+        .limit(limit)
+        .toArray();
+      res.json({
+        from: from.getTime(),
+        to: to.getTime(),
+        count: rows.length,
+        limit,
+        lines: rows.map((r) => ({
+          t: r.t.getTime(), source: r.source, ip: r.ip, method: r.method,
+          status: r.status, cls: r.cls, path: r.path, attack: !!r.attack,
+        })),
+      });
+    } catch (e) {
+      res.status(500).json({ error: String(e.message || e) });
+    }
+  });
+
   // Health check.
   router.get('/healthz', (req, res) => res.json({ ok: true }));
 

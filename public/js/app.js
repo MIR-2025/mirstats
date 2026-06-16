@@ -170,6 +170,7 @@ const tailEl = $('tail');
 let autoScroll = true;
 let tailFilter = null; // active source filter, or null = show all
 let tailIpFilter = ''; // active IP / /24 prefix filter (empty = show all)
+let tailPinned = false; // true while showing a clicked chart bar's stored logs
 
 // A tail line is hidden if it fails the active source OR the active IP filter.
 function tailHidden(source, ip) {
@@ -402,6 +403,47 @@ chartEl.addEventListener('scroll', () => {
   if (chartEl.scrollLeft < EDGE_PX) loadOlder();
   else if (atRight && !following) loadNewer();
 });
+
+// ── click a bar to pin that bucket's stored logs into the tail feed ──
+// Live lines keep recording (see appendTail) but stop drawing until "✕ live".
+const hhmm = (ms) => { const d = new Date(ms); const p = (n) => String(n).padStart(2, '0'); return `${p(d.getHours())}:${p(d.getMinutes())}`; };
+function unpinTail() {
+  if (!tailPinned) return;
+  tailPinned = false;
+  $('tail-pin').innerHTML = '';
+  autoScroll = true;
+  tailEl.innerHTML = '';
+  for (const t of tailLog) renderTail(t); // redraw the live ring we kept recording
+  applyTailFilter();
+  tailEl.scrollTop = tailEl.scrollHeight;
+}
+async function pinBar(m) {
+  const from = m * 60000;
+  const to = (m + chartBucket) * 60000;
+  const qs = new URLSearchParams({ from: String(from), to: String(to) });
+  if (tailFilter) qs.set('source', tailFilter);            // mirror the active tail filters
+  const ipf = chartIp || tailIpFilter;
+  if (ipf) qs.set('ip', ipf);
+  let d;
+  try { d = await (await fetch('/api/events?' + qs.toString())).json(); } catch { return; }
+  if (!d || d.error) return;
+  tailPinned = true;
+  autoScroll = false;
+  tailEl.innerHTML = '';
+  const lines = d.lines || [];
+  if (lines.length) { for (const t of lines) renderTail(t); applyTailFilter(); }
+  else tailEl.innerHTML = '<div class="ln muted">no stored logs in this interval</div>';
+  tailEl.scrollTop = 0;
+  const more = d.count >= d.limit ? '+' : '';
+  $('tail-pin').innerHTML = `<span class="pin-dot">●</span> ${hhmm(from)}–${hhmm(to)} · ${d.count}${more} <span class="pin-x">✕ live</span>`;
+}
+$('tail-pin').addEventListener('click', unpinTail);
+chartEl.addEventListener('click', (e) => {
+  const bar = e.target.closest('.bar');
+  if (!bar) return;
+  const m = +bar.dataset.m;
+  if (Number.isFinite(m)) pinBar(m);
+});
 // date picker → jump to ±6h around the chosen time
 const rpmDate = $('rpm-date');
 if (rpmDate) rpmDate.addEventListener('change', async () => {
@@ -539,7 +581,7 @@ function renderTail(t) {
 function appendTail(t) {
   tailLog.push(t);
   while (tailLog.length > TAIL_MAX) tailLog.shift();
-  renderTail(t);
+  if (!tailPinned) renderTail(t); // while pinned to a bar, keep recording but don't redraw
   saveTailSoon();
 }
 
@@ -556,6 +598,8 @@ function loadTail() {
 // Clear button: wipe the DOM, the in-memory ring, and the saved copy.
 $('tail-clear').addEventListener('click', () => {
   tailLog = [];
+  tailPinned = false;
+  $('tail-pin').innerHTML = '';
   if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
   try { localStorage.removeItem(TAIL_KEY); } catch { /* ignore */ }
   tailEl.innerHTML = '';
