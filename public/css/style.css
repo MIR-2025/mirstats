@@ -134,11 +134,11 @@ table.dash-table tr:hover td { background: var(--row-hover); }
 #rpm .seg.so { background: var(--so-bg); }
 
 /* req/min rolling time axis (scrolls in sync with the bars) */
-.rpm-axis-wrap { position: relative; height: 14px; overflow: hidden; }
-.rpm-axis { position: relative; height: 14px; will-change: transform; }
-.rpm-tick { position: absolute; top: 2px; font-family: var(--mono); font-size: 0.58rem; color: var(--ts); white-space: nowrap; transform: translateX(-50%); }
+.rpm-axis-wrap { position: relative; height: 26px; overflow: hidden; }
+.rpm-axis { position: relative; height: 26px; will-change: transform; }
+.rpm-tick { position: absolute; top: 5px; font-family: var(--mono); font-size: 0.58rem; color: var(--ts); white-space: nowrap; transform-origin: top left; transform: rotate(40deg); }
 .rpm-tick.day { color: var(--header-fg); }
-.rpm-tick::before { content: ''; position: absolute; top: -2px; left: 50%; width: 1px; height: 3px; background: var(--card-border); }
+.rpm-tick::before { content: ''; position: absolute; top: -5px; left: 0; width: 1px; height: 4px; background: var(--card-border); }
 
 /* req/min chart IP filter tag */
 .rpm-ip-tag { font-family: var(--mono); font-size: 0.7rem; color: var(--teal); cursor: pointer; margin-left: 6px; text-transform: none; letter-spacing: 0; }

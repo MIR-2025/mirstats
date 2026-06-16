@@ -278,16 +278,18 @@ function renderAxis() {
   if (!rpmAxis) return;
   if (!chartBars.length) { rpmAxis.innerHTML = ''; return; }
   rpmAxis.style.width = (chartBars.length * barW) + 'px';
-  let step = niceInterval(Math.ceil(52 / barW)); // ~52px between labels
-  if (step % chartBucket !== 0) step = Math.ceil(step / chartBucket) * chartBucket; // align to bar size
+  // one label per hour, on the hour (step out to 2/3/6/12/24h only if it crowds)
+  const pxPerHour = (60 / chartBucket) * barW;
+  const hourStep = [1, 2, 3, 6, 12, 24].find((h) => pxPerHour * h >= 22) || 24;
+  const stepMin = 60 * hourStep;
   const p = (n) => String(n).padStart(2, '0');
   let html = '';
   for (let i = 0; i < chartBars.length; i++) {
     const m = chartBars[i].m;
-    if (m % step !== 0) continue; // clock-aligned ticks
+    if (m % stepMin !== 0) continue; // only on the hour
     const d = new Date(m * 60000);
-    const midnight = d.getHours() === 0 && d.getMinutes() === 0;
-    const label = midnight ? `${p(d.getMonth() + 1)}-${p(d.getDate())}` : `${p(d.getHours())}:${p(d.getMinutes())}`;
+    const midnight = d.getHours() === 0;
+    const label = midnight ? `${p(d.getMonth() + 1)}-${p(d.getDate())}` : `${d.getHours()}`;
     html += `<span class="rpm-tick${midnight ? ' day' : ''}" style="left:${i * barW}px">${label}</span>`;
   }
   rpmAxis.innerHTML = html;
