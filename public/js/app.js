@@ -435,7 +435,7 @@ async function pinBar(m) {
   else tailEl.innerHTML = '<div class="ln muted">no stored logs in this interval</div>';
   tailEl.scrollTop = 0;
   const more = d.count >= d.limit ? '+' : '';
-  $('tail-pin').innerHTML = `<span class="pin-dot">●</span> ${hhmm(from)}–${hhmm(to)} · ${d.count}${more} <span class="pin-x">✕ live</span>`;
+  $('tail-pin').innerHTML = `<span class="pin-dot">●</span> ${d.count}${more} lines <span class="pin-x" title="Back to live">✕ ${hhmm(from)}–${hhmm(to)}</span>`;
 }
 $('tail-pin').addEventListener('click', unpinTail);
 chartEl.addEventListener('click', (e) => {
