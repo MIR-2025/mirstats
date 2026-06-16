@@ -1,6 +1,7 @@
-# MIR Stats
+# MIR Sentinel
 
-A self-hosted, real-time **log-stats dashboard**. It connects to a live log feed,
+**M**onitoring · **I**ntelligence · **R**eporting — a self-hosted, real-time
+**log dashboard**. It connects to a live log feed,
 parses every line (across many different web-server log formats), and renders a
 single live view of what's happening across one or many sites: request rate,
 status-code breakdown, top paths, top IPs, **probing/attacker IPs with one-click

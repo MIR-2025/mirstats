@@ -1,7 +1,7 @@
 {
-  "name": "mirstats",
+  "name": "mir-sentinel",
   "version": "1.0.0",
-  "description": "Self-hosted real-time log-stats dashboard: live tail + traffic, status, top paths/IPs, attacker IPs (AbuseIPDB/ipinfo), and alerts across many sites on one screen.",
+  "description": "MIR Sentinel — self-hosted real-time log Monitoring, Intelligence & Reporting: live tail + traffic, attacker detection & AbuseIPDB auto-reporting, AI analysis, IP search, and a scrollable history across many sites on one screen.",
   "license": "MIT",
   "type": "module",
   "main": "app.js",
