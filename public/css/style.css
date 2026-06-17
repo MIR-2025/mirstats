@@ -145,6 +145,15 @@ table.dash-table tr:hover td { background: var(--row-hover); }
 #rpm .seg.s5 { background: var(--crit); }
 #rpm .seg.so { background: var(--so-bg); }
 
+/* hit-count labels pinned to the chart's left/right edges (current edge bars) */
+.rpm-wrap { position: relative; }
+.rpm-end { position: absolute; top: 3px; z-index: 2; pointer-events: none;
+  font-family: var(--mono); font-size: 0.62rem; color: var(--fg); opacity: 0.92;
+  background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 3px; padding: 0 4px; }
+.rpm-end:empty { display: none; }
+#rpm-end-l { left: 3px; }
+#rpm-end-r { right: 3px; }
+
 /* req/min rolling time axis (scrolls in sync with the bars) */
 .rpm-axis-wrap { position: relative; height: 26px; overflow: hidden; }
 .rpm-axis { position: relative; height: 26px; will-change: transform; }

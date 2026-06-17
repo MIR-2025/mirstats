@@ -306,6 +306,18 @@ function renderChart() {
   const pk = $('rpm-peak');
   if (pk) pk.textContent = `peak ${chartPeak}/min`;
   renderAxis();
+  updateEnds();
+}
+// Hit count of the bars currently at the left and right edges of the viewport.
+function updateEnds() {
+  const L = $('rpm-end-l'); const R = $('rpm-end-r');
+  if (!L || !R) return;
+  if (!chartBars.length) { L.textContent = ''; R.textContent = ''; return; }
+  const last = chartBars.length - 1;
+  const li = Math.max(0, Math.min(last, Math.floor(chartEl.scrollLeft / barW)));
+  const ri = Math.max(0, Math.min(last, Math.ceil((chartEl.scrollLeft + chartEl.clientWidth) / barW) - 1));
+  L.textContent = chartBars[li].total.toLocaleString();
+  R.textContent = chartBars[ri].total.toLocaleString();
 }
 async function fetchWindow(fromM, toM) {
   try {
@@ -374,6 +386,7 @@ function chartLive(d) {
     renderChart();
   }
   chartEl.scrollLeft = chartEl.scrollWidth;
+  updateEnds();
 }
 // mouse wheel = horizontal scroll while hovering the chart
 chartEl.addEventListener('wheel', (e) => {
@@ -390,6 +403,7 @@ chartEl.addEventListener('wheel', (e) => {
     try { localStorage.setItem('mirstats.barw', barW); } catch { /* ignore */ }
     chartEl.scrollLeft = idx * barW - cursorX; // keep that bar under the cursor
     renderAxis();
+    updateEnds();
   } else {
     chartEl.scrollLeft += e.deltaY;
   }
@@ -397,6 +411,7 @@ chartEl.addEventListener('wheel', (e) => {
 // follow/browse state + lazy edge loading
 chartEl.addEventListener('scroll', () => {
   syncAxis();
+  updateEnds();
   const atRight = chartEl.scrollLeft + chartEl.clientWidth >= chartEl.scrollWidth - 8;
   const last = chartBars.length ? chartBars[chartBars.length - 1].m : 0;
   following = atRight && last + chartBucket > histLatest;
