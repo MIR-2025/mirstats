@@ -144,12 +144,15 @@ table.dash-table tr:hover td { background: var(--row-hover); }
 #rpm .seg.s4 { background: var(--red); }
 #rpm .seg.s5 { background: var(--crit); }
 #rpm .seg.so { background: var(--so-bg); }
+/* the bars at the chart's left/right edges, tied to the edge hit-count labels */
+#rpm .bar.edge { background: var(--bar); }
+#rpm .bar.edge .seg { background: var(--bar); }
 
 /* hit-count labels pinned to the chart's left/right edges (current edge bars) */
 .rpm-wrap { position: relative; }
 .rpm-end { position: absolute; top: 3px; z-index: 2; pointer-events: none;
-  font-family: var(--mono); font-size: 0.62rem; color: var(--fg); opacity: 0.92;
-  background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 3px; padding: 0 4px; }
+  font-family: var(--mono); font-size: 0.62rem; color: var(--bar); opacity: 0.95;
+  background: var(--card-bg); border: 1px solid var(--bar); border-radius: 3px; padding: 0 4px; }
 .rpm-end:empty { display: none; }
 #rpm-end-l { left: 3px; }
 #rpm-end-r { right: 3px; }

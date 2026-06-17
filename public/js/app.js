@@ -312,12 +312,16 @@ function renderChart() {
 function updateEnds() {
   const L = $('rpm-end-l'); const R = $('rpm-end-r');
   if (!L || !R) return;
+  for (const el of chartEl.querySelectorAll('.bar.edge')) el.classList.remove('edge');
   if (!chartBars.length) { L.textContent = ''; R.textContent = ''; return; }
   const last = chartBars.length - 1;
   const li = Math.max(0, Math.min(last, Math.floor(chartEl.scrollLeft / barW)));
   const ri = Math.max(0, Math.min(last, Math.ceil((chartEl.scrollLeft + chartEl.clientWidth) / barW) - 1));
   L.textContent = chartBars[li].total.toLocaleString();
   R.textContent = chartBars[ri].total.toLocaleString();
+  const bars = chartEl.children; // 1:1 with chartBars (appended in order)
+  if (bars[li]) bars[li].classList.add('edge');
+  if (bars[ri]) bars[ri].classList.add('edge');
 }
 async function fetchWindow(fromM, toM) {
   try {
