@@ -155,7 +155,7 @@ table.dash-table tr:hover td { background: var(--row-hover); }
   background: var(--card-bg); border: 1px solid var(--bar); border-radius: 3px; padding: 0 4px; }
 .rpm-end:empty { display: none; }
 #rpm-end-l { left: 3px; }
-#rpm-end-r { right: 3px; }
+#rpm-end-r { right: 3px; color: var(--green); border-color: var(--green); }
 
 /* req/min rolling time axis (scrolls in sync with the bars) */
 .rpm-axis-wrap { position: relative; height: 26px; overflow: hidden; }
