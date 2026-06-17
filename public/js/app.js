@@ -803,3 +803,25 @@ if (ipq) {
   });
   [ipqFrom, ipqTo].forEach((el) => el && el.addEventListener('change', () => { if (ipq.value.trim().length >= 2) ipqSearch(); }));
 }
+
+// ── persist each collapsible card's open/closed state across reloads ──
+// Default: the req/min chart is open, every other collapsible card is closed.
+// A saved choice (from the user toggling a card) overrides the default.
+const COLLAPSE_KEY = 'mirstats.collapsed.v1';
+const collapseDefault = { 'acc-rpm': true };
+function readCollapse() { try { return JSON.parse(localStorage.getItem(COLLAPSE_KEY) || '{}') || {}; } catch { return {}; } }
+function writeCollapse(id, open) {
+  const s = readCollapse(); s[id] = open;
+  try { localStorage.setItem(COLLAPSE_KEY, JSON.stringify(s)); } catch { /* quota / disabled */ }
+}
+(function initCollapseState() {
+  if (typeof bootstrap === 'undefined' || !bootstrap.Collapse) return;
+  const saved = readCollapse();
+  document.querySelectorAll('.dash .collapse[id^="acc-"]').forEach((el) => {
+    const want = el.id in saved ? !!saved[el.id] : !!collapseDefault[el.id];
+    const inst = bootstrap.Collapse.getOrCreateInstance(el, { toggle: false });
+    if (want !== el.classList.contains('show')) { if (want) inst.show(); else inst.hide(); } // only animate on a real diff
+    el.addEventListener('shown.bs.collapse', () => writeCollapse(el.id, true));
+    el.addEventListener('hidden.bs.collapse', () => writeCollapse(el.id, false));
+  });
+})();
