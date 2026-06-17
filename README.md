@@ -14,15 +14,26 @@ client (no front-end build step).
 ## Features
 
 - **Live tail** — every incoming log line, colorized by source, with arrival
-  timestamps. Click a **source** to filter the tail to just that site.
-- **Rolling stats**: total requests, requests/min, 2xx/3xx/4xx/5xx split, error
-  rate. Cumulative stats are snapshotted to disk (`data/stats-state.json`) so a
-  restart doesn't zero them.
+  timestamps. Click a **source** to scope the whole dashboard to one site, filter
+  by an **IP or `/24`**, and **404 responses are outlined** so probes stand out.
+  The tail persists across reloads (localStorage) with a one-click clear.
+- **Rolling stats**: total requests, requests/min, **hits in the last 5 min**,
+  2xx/3xx/4xx/5xx split, error rate, attacks, alerts, and bot hits. Cumulative
+  stats are snapshotted to disk (`data/stats-state.json`) so a restart doesn't
+  zero them.
 - **Scrollable req/min history** — a per-minute, status-stacked chart backed by a
   1-year on-disk store (`data/rpm-history.jsonl`). Scroll or mouse-wheel left to
-  browse; jump to any date; older windows lazy-load at the edge so the DOM stays
-  bounded no matter how far back the data goes.
-- **Top paths / IPs / methods / sources.**
+  browse (older windows lazy-load at the edge so the DOM stays bounded); jump to
+  any date; **Ctrl+wheel zooms** the bars; the header shows the **60-minute
+  average** and peak; each edge is labelled with its bar's per-status hit counts.
+  **Click any bar** to load that interval's stored requests into the tail.
+- **Collapsible panels** — every card collapses (except AI analysis), and each
+  card's open/closed state is remembered across reloads.
+- **AI analysis** (optional) — summarize a chosen day's traffic with the Anthropic
+  API: rendered markdown with a per-source breakdown and a PDF download. Inert
+  until `ANTHROPIC_API_KEY` is set. See [AI log analysis](#ai-log-analysis-optional).
+- **Light / dark theme** toggle (remembered across reloads).
+- **Top paths / IPs / methods / sources** (sources as a donut with hover-highlight).
 - **Top attackers** — IPs hitting credential-probe / scanner paths (`.env`,
   `.git`, `wp-admin`, `xmlrpc`, `actuator`, `/etc/passwd`, …), each linking out to
   **AbuseIPDB** and **ipinfo** for the IP.
@@ -31,7 +42,8 @@ client (no front-end build step).
   [Auto-reporting attackers](#auto-reporting-attackers-optional).
 - **IP search** — type an IP or `/24` prefix to search a Mongo-backed per-request
   log (TTL-pruned) over a date range; matches autocomplete in a dropdown, and
-  picking one shows that IP/subnet's status breakdown, top paths, and time span.
+  picking one shows that IP/subnet's status breakdown, top paths, and time span,
+  and filters the chart to that IP.
 - **Alerts feed** — surfaces `*** ALERT ***` lines from the upstream feed.
 - **Tolerant parser** — extracts source / method / path / status / IP generically,
   so it handles nginx, Apache combined, JSON-ish, and custom formats without
@@ -48,7 +60,13 @@ upstream log feed (Socket.io)  ──►  mirstats (client)  ──►  parse + 
 mirstats connects to `LOG_SOURCE_URL` as a Socket.io **client**, emits
 `subscribe:logs`, and folds each `log:line` event into rolling stats that it
 pushes to connected dashboards (room `stats`) every ~1.5s, plus a live `tail`
-event per line. `GET /api/stats` returns the current snapshot as JSON.
+event per line.
+
+JSON endpoints (all behind the same Basic Auth): `GET /api/stats` (current
+snapshot), `GET /api/rpm` (req/min history window), `GET /api/events` (stored
+requests in a time window — backs click-a-bar), `GET /api/ips` & `GET /api/ip`
+(IP search), `GET /api/rpm-ip` (per-IP history), and `POST /api/analyze` (AI
+summary).
 
 ### Upstream feed
 
@@ -105,13 +123,33 @@ see `lib/netblocks.js`) are never reported — when a site is fronted by a CDN, 
 logged IP is the CDN's edge, not the attacker. Make sure your origin logs the
 real client IP (`X-Forwarded-For` / `CF-Connecting-IP`) for accurate attribution.
 
+## AI log analysis (optional)
+
+The **AI analysis** panel summarizes a chosen day's traffic via the Anthropic API
+— server-side only, so the key never reaches the browser. Pick a date and it
+returns a markdown report (with a per-source breakdown) rendered in the panel,
+which you can also download as a PDF. Results are cached per day in
+`data/analyses.json`.
+
+It is **inert until configured**: with no `ANTHROPIC_API_KEY` the panel just shows
+a hint. Get a key at <https://console.anthropic.com>.
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | — | enables the panel; server-side only |
+| `ANTHROPIC_MODEL` | `claude-sonnet-4-6` | model used for the summary |
+
 ## Requirements
 
 - **Node.js >= 20**
-- **MongoDB** and **Redis** — used by the bundled session/magic-link auth layer
-  that ships with the scaffold base. (The stats pipeline itself is in-memory; if
-  you don't need the user-account layer you can strip `connectMongo`/`connectRedis`
-  from `app.js` and the `routes/auth.js` mount.)
+- **MongoDB** — backs the per-request event log used by **IP search** and
+  **click-a-bar** (a TTL-pruned `events` collection), plus the bundled
+  session/magic-link auth layer from the scaffold base.
+- **Redis** — sessions for the auth layer.
+
+The rolling stats + req/min history are in-memory / file-backed (no DB); if you
+drop the Mongo-backed features and the user-account layer you can strip
+`connectMongo`/`connectRedis` from `app.js` and the `routes/auth.js` mount.
 
 ## Quick start
 
