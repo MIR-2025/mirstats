@@ -308,18 +308,28 @@ function renderChart() {
   renderAxis();
   updateEnds();
 }
-// Hit count of the bars currently at the left and right edges of the viewport.
+// Up to 3 per-status hit counts for an edge bar, each in its segment color and
+// ordered largest-first; '' when the bar has no hits.
+function endHtml(b) {
+  if (!b || !b.total) return '';
+  return RPM_ORDER.filter(([k]) => b[k])
+    .sort((x, y) => b[y[0]] - b[x[0]])
+    .slice(0, 3)
+    .map(([k]) => `<span class="${clsColor[k] || 'muted'}">${b[k].toLocaleString()}</span>`)
+    .join(' ');
+}
+// Status breakdown of the bars currently at the left and right edges of the viewport.
 function updateEnds() {
   const L = $('rpm-end-l'); const R = $('rpm-end-r');
   if (!L || !R) return;
   for (const el of chartEl.querySelectorAll('.bar.edge')) el.classList.remove('edge');
-  if (!chartBars.length) { L.textContent = ''; R.textContent = ''; return; }
+  if (!chartBars.length) { L.innerHTML = ''; R.innerHTML = ''; return; }
   const last = chartBars.length - 1;
   // left: one bar inward — the exact left-edge bar is usually clipped/hidden
   const li = Math.max(0, Math.min(last, Math.floor(chartEl.scrollLeft / barW) + 1));
   const ri = Math.max(0, Math.min(last, Math.ceil((chartEl.scrollLeft + chartEl.clientWidth) / barW) - 1));
-  L.textContent = chartBars[li].total.toLocaleString();
-  R.textContent = chartBars[ri].total.toLocaleString();
+  L.innerHTML = endHtml(chartBars[li]);
+  R.innerHTML = endHtml(chartBars[ri]);
   const bars = chartEl.children; // 1:1 with chartBars (appended in order)
   if (bars[li]) bars[li].classList.add('edge'); // only the left edge bar is tinted
 }
