@@ -100,6 +100,11 @@ main {
 .dash .card-header.acc-toggle:hover { color: var(--teal); }
 .acc-caret { transition: transform 0.15s ease; opacity: 0.7; }
 .card-header.acc-toggle:not(.collapsed) .acc-caret { transform: rotate(90deg); }
+/* title-only toggle, for headers that also carry inline controls (chart, tail) */
+.dash .card-header .acc-h { display: inline-flex; align-items: center; cursor: pointer; user-select: none; }
+.dash .card-header .acc-h:hover { color: var(--teal); }
+.dash .card-header .acc-h .acc-caret { margin-right: 4px; }
+.acc-h:not(.collapsed) .acc-caret { transform: rotate(90deg); }
 .stat-card .value {
   font-family: var(--mono);
   font-size: 1.9rem;
