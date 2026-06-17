@@ -321,8 +321,7 @@ function updateEnds() {
   L.textContent = chartBars[li].total.toLocaleString();
   R.textContent = chartBars[ri].total.toLocaleString();
   const bars = chartEl.children; // 1:1 with chartBars (appended in order)
-  if (bars[li]) bars[li].classList.add('edge');
-  if (bars[ri]) bars[ri].classList.add('edge');
+  if (bars[li]) bars[li].classList.add('edge'); // only the left edge bar is tinted
 }
 async function fetchWindow(fromM, toM) {
   try {
