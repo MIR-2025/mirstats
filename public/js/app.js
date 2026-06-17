@@ -88,6 +88,7 @@ function renderStats(d) {
   $('c-alert').textContent = d.counts.alerts.toLocaleString();
   $('c-bots').textContent = d.counts.bots.toLocaleString();
   $('c-assetsub').textContent = `${d.counts.assets.toLocaleString()} asset hits`;
+  if (d.hits5 != null) $('c-hits5').textContent = d.hits5.toLocaleString();
 
   // (the requests/minute chart is driven separately by the history store — see
   // the historical req/min chart section + chartLive())
@@ -483,6 +484,15 @@ chartEl.addEventListener('click', (e) => {
   const m = +bar.dataset.m;
   if (Number.isFinite(m)) pinBar(m);
 });
+// The chart & tail cards default collapsed, so they're laid out at zero width
+// while hidden — re-fit them the first time (and any time) they're expanded.
+document.getElementById('acc-rpm')?.addEventListener('shown.bs.collapse', () => {
+  renderChart();
+  if (following) chartEl.scrollLeft = chartEl.scrollWidth;
+});
+document.getElementById('acc-tail')?.addEventListener('shown.bs.collapse', () => {
+  if (autoScroll && !tailPinned) tailEl.scrollTop = tailEl.scrollHeight;
+});
 // date picker → jump to ±6h around the chosen time
 const rpmDate = $('rpm-date');
 if (rpmDate) rpmDate.addEventListener('change', async () => {
@@ -601,7 +611,7 @@ function saveTailSoon() {
 // Render one tail payload into the DOM (no storage side effects).
 function renderTail(t) {
   const div = document.createElement('div');
-  div.className = 'ln' + (t.alert ? ' alert' : t.attack ? ' atk' : '');
+  div.className = 'ln' + (t.alert ? ' alert' : t.attack ? ' atk' : '') + (t.status === 404 ? ' s404' : '');
   const ts = `<span class="ts">${clock(t.t)}</span> `;
   const src = `<span class="src" style="color:${sourceColor(t.source)}">[${esc(t.source)}]</span> `;
   const meth = t.method ? `<span class="green">${esc(t.method)}</span> ` : '';

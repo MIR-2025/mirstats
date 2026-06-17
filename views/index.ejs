@@ -52,6 +52,12 @@
         <div class="sub" id="c-assetsub">&nbsp;</div>
       </div></div>
     </div>
+    <div class="col-6 col-md">
+      <div class="card stat-card h-100"><div class="card-body py-2">
+        <div class="value green" id="c-hits5">0</div><div class="label">hits / 5 min</div>
+        <div class="sub">last 5 min</div>
+      </div></div>
+    </div>
   </div>
 
   <div class="row g-3">
@@ -59,7 +65,7 @@
     <div class="col-lg-7">
       <div class="card mb-3">
         <div class="card-header d-flex justify-content-between align-items-center gap-2 flex-wrap">
-          <span class="d-flex align-items-center"><span class="acc-h" role="button" data-bs-toggle="collapse" data-bs-target="#acc-rpm" aria-expanded="true" aria-controls="acc-rpm"><span class="acc-caret">▸</span>requests / minute &middot; history</span><span id="rpm-ip" class="rpm-ip"></span></span>
+          <span class="d-flex align-items-center"><span class="acc-h collapsed" role="button" data-bs-toggle="collapse" data-bs-target="#acc-rpm" aria-expanded="false" aria-controls="acc-rpm"><span class="acc-caret">▸</span>requests / minute &middot; history</span><span id="rpm-ip" class="rpm-ip"></span></span>
           <span class="d-flex align-items-center gap-2">
             <input type="datetime-local" id="rpm-date" class="rpm-date" title="Jump to a date / time">
             <button type="button" id="rpm-now" class="rpm-now" title="Jump to the live edge">now</button>
@@ -67,7 +73,7 @@
             <span class="muted" id="rpm-peak"></span>
           </span>
         </div>
-        <div id="acc-rpm" class="collapse show">
+        <div id="acc-rpm" class="collapse">
         <div class="card-body">
           <div class="rpm-wrap">
             <div id="rpm"></div>
@@ -83,7 +89,7 @@
 
       <div class="card mb-3">
         <div class="card-header d-flex justify-content-between align-items-center">
-          <span class="acc-h" role="button" data-bs-toggle="collapse" data-bs-target="#acc-tail" aria-expanded="true" aria-controls="acc-tail"><span class="acc-caret">▸</span>live tail</span>
+          <span class="acc-h collapsed" role="button" data-bs-toggle="collapse" data-bs-target="#acc-tail" aria-expanded="false" aria-controls="acc-tail"><span class="acc-caret">▸</span>live tail</span>
           <span class="d-flex align-items-center gap-2">
             <span id="tail-pin" class="tail-pin"></span>
             <span id="tail-filter" class="muted"></span>
@@ -91,7 +97,7 @@
             <button id="tail-clear" type="button" class="tail-clear" title="Clear the saved tail">clear</button>
           </span>
         </div>
-        <div id="acc-tail" class="collapse show"><div class="card-body py-2"><div id="tail"></div></div></div>
+        <div id="acc-tail" class="collapse"><div class="card-body py-2"><div id="tail"></div></div></div>
       </div>
 
       <div class="card mb-3">
@@ -108,10 +114,10 @@
       </div>
 
       <div class="card mb-3">
-        <div class="card-header acc-toggle" role="button" data-bs-toggle="collapse" data-bs-target="#acc-alerts" aria-expanded="true" aria-controls="acc-alerts">
+        <div class="card-header acc-toggle collapsed" role="button" data-bs-toggle="collapse" data-bs-target="#acc-alerts" aria-expanded="false" aria-controls="acc-alerts">
           <span>recent alerts</span><span class="acc-caret">▸</span>
         </div>
-        <div id="acc-alerts" class="collapse show">
+        <div id="acc-alerts" class="collapse">
           <div class="card-body py-2"><div id="alerts"><div class="muted small">none yet</div></div></div>
         </div>
       </div>
@@ -120,10 +126,10 @@
     <!-- right column -->
     <div class="col-lg-5">
       <div class="card mb-3">
-        <div class="card-header acc-toggle" role="button" data-bs-toggle="collapse" data-bs-target="#acc-ipq" aria-expanded="true" aria-controls="acc-ipq">
+        <div class="card-header acc-toggle collapsed" role="button" data-bs-toggle="collapse" data-bs-target="#acc-ipq" aria-expanded="false" aria-controls="acc-ipq">
           <span>IP search</span><span class="acc-caret">▸</span>
         </div>
-        <div id="acc-ipq" class="collapse show">
+        <div id="acc-ipq" class="collapse">
         <div class="card-body py-2">
           <div class="ipq-row">
             <input type="text" id="ipq" class="ipq-input" placeholder="IP or /24 prefix — e.g. 195.178.110" autocomplete="off" spellcheck="false">
@@ -138,10 +144,10 @@
         </div>
       </div>
       <div class="card mb-3">
-        <div class="card-header acc-toggle" role="button" data-bs-toggle="collapse" data-bs-target="#acc-sources" aria-expanded="true" aria-controls="acc-sources">
+        <div class="card-header acc-toggle collapsed" role="button" data-bs-toggle="collapse" data-bs-target="#acc-sources" aria-expanded="false" aria-controls="acc-sources">
           <span>sources</span><span class="acc-caret">▸</span>
         </div>
-        <div id="acc-sources" class="collapse show">
+        <div id="acc-sources" class="collapse">
           <div class="card-body py-2"><div id="sources"></div></div>
         </div>
       </div>

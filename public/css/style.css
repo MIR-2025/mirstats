@@ -256,6 +256,7 @@ body.theme-light .rpm-date { color-scheme: light; }
 .tail-ip { font-family: var(--mono); font-size: 0.66rem; color: var(--fg); background: var(--chip-bg);
   border: 1px solid var(--card-border); border-radius: 4px; padding: 1px 6px; width: 108px; }
 #tail .ln[hidden] { display: none; }
+#tail .ln.s404 { outline: 1px solid var(--red); outline-offset: -2px; border-radius: 2px; } /* flag 404 probes */
 /* "click a bar" pinned-bucket banner */
 #rpm .bar { cursor: pointer; }
 .tail-pin { font-family: var(--mono); font-size: 0.68rem; color: var(--teal); white-space: nowrap; }
