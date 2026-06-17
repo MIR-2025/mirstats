@@ -318,10 +318,20 @@ function endHtml(b) {
     .map(([k]) => `<span class="${clsColor[k] || 'muted'}">${b[k].toLocaleString()}</span>`)
     .join(' ');
 }
+// Average req/min over the trailing 60 minutes of loaded bars (newest-anchored).
+function avg60() {
+  if (!chartBars.length) return 0;
+  const n = Math.min(chartBars.length, Math.ceil(60 / chartBucket));
+  let sum = 0;
+  for (let i = chartBars.length - n; i < chartBars.length; i++) sum += chartBars[i].total;
+  return sum / (n * chartBucket); // bars hold per-bucket totals; divide by minutes
+}
 // Status breakdown of the bars currently at the left and right edges of the viewport.
 function updateEnds() {
   const L = $('rpm-end-l'); const R = $('rpm-end-r');
   if (!L || !R) return;
+  const av = $('rpm-avg');
+  if (av) av.textContent = chartBars.length ? `60m avg ${Math.round(avg60())}/min` : '';
   for (const el of chartEl.querySelectorAll('.bar.edge')) el.classList.remove('edge');
   if (!chartBars.length) { L.innerHTML = ''; R.innerHTML = ''; return; }
   const last = chartBars.length - 1;
