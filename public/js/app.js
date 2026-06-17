@@ -316,7 +316,7 @@ function endHtml(b) {
     .sort((x, y) => b[y[0]] - b[x[0]])
     .slice(0, 3)
     .map(([k]) => `<span class="${clsColor[k] || 'muted'}">${b[k].toLocaleString()}</span>`)
-    .join(' ');
+    .join('');
 }
 // Average req/min over the trailing 60 minutes of loaded bars (newest-anchored).
 function avg60() {
