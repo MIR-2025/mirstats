@@ -315,7 +315,8 @@ function updateEnds() {
   for (const el of chartEl.querySelectorAll('.bar.edge')) el.classList.remove('edge');
   if (!chartBars.length) { L.textContent = ''; R.textContent = ''; return; }
   const last = chartBars.length - 1;
-  const li = Math.max(0, Math.min(last, Math.floor(chartEl.scrollLeft / barW)));
+  // left: one bar inward — the exact left-edge bar is usually clipped/hidden
+  const li = Math.max(0, Math.min(last, Math.floor(chartEl.scrollLeft / barW) + 1));
   const ri = Math.max(0, Math.min(last, Math.ceil((chartEl.scrollLeft + chartEl.clientWidth) / barW) - 1));
   L.textContent = chartBars[li].total.toLocaleString();
   R.textContent = chartBars[ri].total.toLocaleString();
