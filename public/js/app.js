@@ -166,7 +166,13 @@ function renderSources(items) {
 }
 
 // ── live tail ──
-const TAIL_MAX = 150;
+// How many lines the tail keeps (DOM + saved ring). User-adjustable via the
+// header select; persisted per-browser. Older lines aren't lost data — use
+// click-a-bar / IP search to pull history from Mongo.
+const TAIL_MAX_KEY = 'mirstats.tailmax';
+const TAIL_SIZES = [50, 100, 150, 300, 500, 1000];
+let TAIL_MAX = 300;
+try { const v = +localStorage.getItem(TAIL_MAX_KEY); if (TAIL_SIZES.includes(v)) TAIL_MAX = v; } catch { /* ignore */ }
 const tailEl = $('tail');
 let autoScroll = true;
 let tailFilter = null; // active source filter, or null = show all
@@ -653,6 +659,21 @@ $('tail-clear').addEventListener('click', () => {
   try { localStorage.removeItem(TAIL_KEY); } catch { /* ignore */ }
   tailEl.innerHTML = '';
 });
+
+// Tail-length select: change how many lines the tail keeps, trim immediately.
+const tailMaxSel = $('tail-max');
+if (tailMaxSel) {
+  tailMaxSel.value = String(TAIL_MAX);
+  tailMaxSel.addEventListener('change', () => {
+    const v = +tailMaxSel.value;
+    if (!TAIL_SIZES.includes(v)) return;
+    TAIL_MAX = v;
+    try { localStorage.setItem(TAIL_MAX_KEY, String(v)); } catch { /* ignore */ }
+    while (tailLog.length > TAIL_MAX) tailLog.shift();
+    while (tailEl.children.length > TAIL_MAX) tailEl.removeChild(tailEl.firstChild);
+    saveTailSoon();
+  });
+}
 
 loadTail();
 

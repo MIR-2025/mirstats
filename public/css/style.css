@@ -255,6 +255,9 @@ body.theme-light .rpm-date { color-scheme: light; }
 .tail-clear:hover { color: var(--red); border-color: var(--red); background: var(--chip-hover); }
 .tail-ip { font-family: var(--mono); font-size: 0.66rem; color: var(--fg); background: var(--chip-bg);
   border: 1px solid var(--card-border); border-radius: 4px; padding: 1px 6px; width: 108px; }
+.tail-max { font-family: var(--mono); font-size: 0.66rem; color: var(--fg); background: var(--chip-bg);
+  border: 1px solid var(--card-border); border-radius: 4px; padding: 1px 4px; color-scheme: dark; }
+body.theme-light .tail-max { color-scheme: light; }
 #tail .ln[hidden] { display: none; }
 #tail .ln.s404 { outline: 1px solid var(--red); outline-offset: -2px; border-radius: 2px; } /* flag 404 probes */
 /* "click a bar" pinned-bucket banner */
