@@ -370,8 +370,21 @@ async function loadNow() {
     chartBars = d.bars || [];
   } catch { chartBars = []; }
   renderChart();
-  chartEl.scrollLeft = chartEl.scrollWidth;
   following = true;
+  await fillToScrollable();              // a short window may not overflow → pad it
+  chartEl.scrollLeft = chartEl.scrollWidth; // pin to the live edge
+}
+// A short default window (e.g. 5-min buckets ≈ 145 bars) can be narrower than the
+// chart container, leaving no horizontal overflow — so the wheel can't scroll and
+// the bars sit bunched at the left. Pad with older history until it overflows
+// (bounded by available data + a guard) so the chart is always browsable.
+async function fillToScrollable() {
+  let guard = 0;
+  while (guard++ < 12 && chartEl.clientWidth > 0 && chartBars.length
+      && chartBars[0].m > histEarliest
+      && chartEl.scrollWidth <= chartEl.clientWidth + 4) {
+    await loadOlder();
+  }
 }
 async function loadOlder() {
   if (loadingEdge || !chartBars.length || chartBars[0].m <= histEarliest) return;
@@ -492,8 +505,9 @@ chartEl.addEventListener('click', (e) => {
 });
 // The chart & tail cards default collapsed, so they're laid out at zero width
 // while hidden — re-fit them the first time (and any time) they're expanded.
-document.getElementById('acc-rpm')?.addEventListener('shown.bs.collapse', () => {
+document.getElementById('acc-rpm')?.addEventListener('shown.bs.collapse', async () => {
   renderChart();
+  await fillToScrollable();
   if (following) chartEl.scrollLeft = chartEl.scrollWidth;
 });
 document.getElementById('acc-tail')?.addEventListener('shown.bs.collapse', () => {
