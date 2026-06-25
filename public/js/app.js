@@ -243,7 +243,8 @@ const DOM_MAX = 4320; // max bars kept in the DOM (3 days)
 const EDGE_PX = 300;  // start lazy-loading at either edge within this many px
 const VIEW_MINUTES = 360; // most recent 6h fills the viewport on load
 let barW = 4;         // bar pixel width — Ctrl+wheel zooms it; mirrors CSS --barw
-try { const z = +localStorage.getItem('mirstats.barw'); if (z >= 1 && z <= 24) barW = z; } catch { /* ignore */ }
+let hasSavedZoom = false; // true once the user has zoomed — remembered across reloads
+try { const z = +localStorage.getItem('mirstats.barw'); if (z >= 1 && z <= 24) { barW = z; hasSavedZoom = true; } } catch { /* ignore */ }
 const chartEl = $('rpm');
 chartEl.style.setProperty('--barw', barW + 'px');
 const rpmAxis = $('rpm-axis');
@@ -377,8 +378,10 @@ async function loadNow() {
   chartEl.scrollLeft = chartEl.scrollWidth; // newest bar flush at the right edge
 }
 // Size the bars so the most recent VIEW_MINUTES (6h) fill the visible width; the
-// rest of the loaded window is reached by scrolling. Ctrl+wheel still re-zooms.
+// rest of the loaded window is reached by scrolling. This is only the default —
+// once the user has Ctrl+wheel zoomed, that zoom is remembered across reloads.
 function fitWindow() {
+  if (hasSavedZoom) return; // honor the remembered zoom instead of re-fitting to 6h
   const w = chartEl.clientWidth;
   if (!w) return;
   const barsInView = Math.max(1, Math.round(VIEW_MINUTES / chartBucket));
@@ -454,6 +457,7 @@ chartEl.addEventListener('wheel', (e) => {
     const next = Math.min(24, Math.max(1, +(barW * (e.deltaY < 0 ? 1.15 : 1 / 1.15)).toFixed(2)));
     if (next === barW) return;
     barW = next;
+    hasSavedZoom = true; // remember this zoom across reloads (overrides 6h-fit)
     chartEl.style.setProperty('--barw', barW + 'px');
     try { localStorage.setItem('mirstats.barw', barW); } catch { /* ignore */ }
     chartEl.scrollLeft = idx * barW - cursorX; // keep that bar under the cursor
