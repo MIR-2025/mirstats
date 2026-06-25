@@ -240,7 +240,8 @@ function clock(ms) {
 const RPM_ORDER = [['2xx', 's2'], ['3xx', 's3'], ['4xx', 's4'], ['5xx', 's5'], ['other', 'so']];
 const CHUNK = 360;    // minutes fetched per edge-load (6h)
 const DOM_MAX = 4320; // max bars kept in the DOM (3 days)
-const EDGE_PX = 300;  // start lazy-loading older bars within this many px of the left edge
+const EDGE_PX = 300;  // start lazy-loading at either edge within this many px
+const VIEW_MINUTES = 360; // most recent 6h fills the viewport on load
 let barW = 4;         // bar pixel width — Ctrl+wheel zooms it; mirrors CSS --barw
 try { const z = +localStorage.getItem('mirstats.barw'); if (z >= 1 && z <= 24) barW = z; } catch { /* ignore */ }
 const chartEl = $('rpm');
@@ -369,10 +370,20 @@ async function loadNow() {
     if (d.bucket) chartBucket = d.bucket;
     chartBars = d.bars || [];
   } catch { chartBars = []; }
+  fitWindow();                          // size bars so the most recent 6h fill the view
   renderChart();
   following = true;
-  await fillToScrollable();              // a short window may not overflow → pad it
-  chartEl.scrollLeft = chartEl.scrollWidth; // pin to the live edge
+  await fillToScrollable();             // ensure older data is loaded to scroll into
+  chartEl.scrollLeft = chartEl.scrollWidth; // newest bar flush at the right edge
+}
+// Size the bars so the most recent VIEW_MINUTES (6h) fill the visible width; the
+// rest of the loaded window is reached by scrolling. Ctrl+wheel still re-zooms.
+function fitWindow() {
+  const w = chartEl.clientWidth;
+  if (!w) return;
+  const barsInView = Math.max(1, Math.round(VIEW_MINUTES / chartBucket));
+  barW = +Math.max(1, Math.min(24, w / barsInView)).toFixed(2);
+  chartEl.style.setProperty('--barw', barW + 'px');
 }
 // A short default window (e.g. 5-min buckets ≈ 145 bars) can be narrower than the
 // chart container, leaving no horizontal overflow — so the wheel can't scroll and
@@ -457,10 +468,11 @@ chartEl.addEventListener('scroll', () => {
   syncAxis();
   updateEnds();
   const atRight = chartEl.scrollLeft + chartEl.clientWidth >= chartEl.scrollWidth - 8;
+  const nearRight = chartEl.scrollLeft + chartEl.clientWidth >= chartEl.scrollWidth - EDGE_PX;
   const last = chartBars.length ? chartBars[chartBars.length - 1].m : 0;
   following = atRight && last + chartBucket > histLatest;
   if (chartEl.scrollLeft < EDGE_PX) loadOlder();
-  else if (atRight && !following) loadNewer();
+  else if (nearRight && !following) loadNewer(); // lazy-load newer toward the live edge
 });
 
 // ── click a bar to pin that bucket's stored logs into the tail feed ──
@@ -506,6 +518,7 @@ chartEl.addEventListener('click', (e) => {
 // The chart & tail cards default collapsed, so they're laid out at zero width
 // while hidden — re-fit them the first time (and any time) they're expanded.
 document.getElementById('acc-rpm')?.addEventListener('shown.bs.collapse', async () => {
+  fitWindow();
   renderChart();
   await fillToScrollable();
   if (following) chartEl.scrollLeft = chartEl.scrollWidth;
@@ -521,6 +534,7 @@ if (rpmDate) rpmDate.addEventListener('change', async () => {
   const c = Math.floor(ms / 60000);
   following = false;
   chartBars = await fetchWindow(c - 360, c + 360);
+  fitWindow();
   renderChart();
   chartEl.scrollLeft = (chartEl.scrollWidth - chartEl.clientWidth) / 2;
 });
