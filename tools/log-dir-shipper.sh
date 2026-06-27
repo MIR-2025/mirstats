@@ -93,7 +93,10 @@ start_tail() {
   # Background a subshell running tail -> awk(prefix with source\t) -> FIFO.
   # The subshell PID is what `$!` returns and what we kill on shutdown; SIGTERM
   # propagates to the tail and awk children.
-  ( tail -F -n 0 "$file" 2>/dev/null | awk -v s="$source" '{print s"\t"$0; fflush()}' > "$FIFO" ) &
+  # Cap line length so each "source\tline\n" write stays under PIPE_BUF (4096B)
+  # and is therefore atomic on the shared FIFO -- long lines could otherwise
+  # interleave across the concurrent tail writers.
+  ( tail -F -n 0 "$file" 2>/dev/null | awk -v s="$source" '{ l=$0; if (length(l) > 4000) l=substr(l,1,4000); print s"\t"l; fflush() }' > "$FIFO" ) &
   echo "$!" >> "$TAIL_PIDS"
   STARTED[$source]=1
   echo "[$(date '+%F %T')] tailing $file (source=$source)" >&2
@@ -151,41 +154,37 @@ scan
 ) &
 echo "$!" >> "$TAIL_PIDS"
 
+# Periodic flush tick. A blocking read() can't be interrupted mid-record -- the
+# old `read -t` consumed then discarded a partial record when its deadline landed
+# mid-record, dropping the first byte of the next record's source tag. Drive the
+# time-based flush with a sentinel record every BATCH_INTERVAL instead of a read
+# timeout. Written to FD 4 (the held-open FIFO write side).
+(
+  while sleep "$BATCH_INTERVAL"; do
+    printf '__tick__\t\n' >&4
+  done
+) &
+echo "$!" >> "$TAIL_PIDS"
+
 exec 3<"$FIFO"
 
 echo "[$(date '+%F %T')] shipping $LOG_DIR/*.log to $INGEST_URL (interval=${BATCH_INTERVAL}s, max=$BATCH_MAX/source, rescan=${RESCAN_INTERVAL}s)"
 
-NEXT_FLUSH=$((SECONDS + BATCH_INTERVAL))
-
-while true; do
-  rc=0
-  IFS=$'\t' read -r -t "$BATCH_INTERVAL" source line <&3 || rc=$?
-
-  if [[ $rc -eq 0 ]]; then
-    if [[ -n "$source" ]]; then
-      printf '%s\n' "$line" >> "$WORK/buf.$source"
-      COUNTS[$source]=$((${COUNTS[$source]:-0} + 1))
-      if [[ "${COUNTS[$source]}" -ge "$BATCH_MAX" ]]; then
-        flush_source "$source"
-        COUNTS[$source]=0
-      fi
-    fi
-  elif [[ $rc -gt 128 ]]; then
-    # Read timed out (no input for BATCH_INTERVAL). Handled by the time-based
-    # flush below.
-    :
-  else
-    # Should not happen because FIFO write side is held open on FD 4. If it
-    # does, brief sleep so we don't spin.
-    sleep 0.1
-  fi
-
-  # Time-based flush -- fires every BATCH_INTERVAL seconds independent of read
-  # activity. Without this, one constantly-noisy source keeps `read` returning
-  # success forever, and quiet sources never reach BATCH_MAX, so their buffered
-  # lines would sit unsent indefinitely.
-  if [[ "$SECONDS" -ge "$NEXT_FLUSH" ]]; then
+# Blocking read (no -t): a timed read returns having already consumed bytes when
+# its deadline lands mid-record, and the discarded prefix desyncs the framing --
+# dropping the first byte of the next record's source tag. With a blocking read
+# every record arrives whole; the __tick__ sentinel (above) drives the periodic
+# flush the timeout used to. The held-open FD 4 means read never sees EOF, so the
+# loop blocks rather than exiting.
+while IFS=$'\t' read -r source line <&3; do
+  if [[ "$source" == "__tick__" ]]; then
     flush_all
-    NEXT_FLUSH=$((SECONDS + BATCH_INTERVAL))
+  elif [[ -n "$source" ]]; then
+    printf '%s\n' "$line" >> "$WORK/buf.$source"
+    COUNTS[$source]=$((${COUNTS[$source]:-0} + 1))
+    if [[ "${COUNTS[$source]}" -ge "$BATCH_MAX" ]]; then
+      flush_source "$source"
+      COUNTS[$source]=0
+    fi
   fi
 done
