@@ -40,13 +40,24 @@ const SERVICES = [
 const esc = (s) =>
   String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-// Curated colors for a few well-known source names; any other source gets a
-// stable auto-hue from the hash below. Edit these to match your own sources.
-const KNOWN = {
-  api: '#34d399', web: '#facc15', auth: '#a78bfa',
-  cdn: '#f472b6', worker: '#fb923c', cron: '#38bdf8',
-  claude: '#d97757', // Claude Code's own /v1/events telemetry from loopback
-};
+// Source colors. The server sets <div class="dash" data-palette> from the
+// SOURCE_PALETTE env var: "mir" uses mir.org's /logs hues, anything else uses a
+// generic example palette. This keeps app.js identical across deployments — the
+// only thing that differs is .env. Unknown sources get a stable auto-hue below.
+function sourcePalette() {
+  const claude = { claude: '#d97757' }; // Claude Code's /v1/events telemetry from loopback
+  if (document.querySelector('.dash')?.dataset.palette === 'mir') {
+    return {
+      'mir-com': '#34d399', 'mir-org': '#facc15', mirassertions: '#a78bfa',
+      mircapture: '#f472b6', mirresolve: '#fb923c', mirprotocol: '#38bdf8', ...claude,
+    };
+  }
+  return {
+    api: '#34d399', web: '#facc15', auth: '#a78bfa',
+    cdn: '#f472b6', worker: '#fb923c', cron: '#38bdf8', ...claude,
+  };
+}
+const KNOWN = sourcePalette();
 function sourceColor(s) {
   if (KNOWN[s]) return KNOWN[s];
   const k = (s || '').toLowerCase().slice(0, 3);

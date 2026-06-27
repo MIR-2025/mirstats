@@ -14,7 +14,7 @@ export function createRouter({ redis, io, logStream } = {}) {
 
   // Live stats dashboard.
   router.get('/', (req, res) => {
-    res.render('index', { pageTitle: 'Dashboard' });
+    res.render('index', { pageTitle: 'Dashboard', sourcePalette: process.env.SOURCE_PALETTE || '' });
   });
 
   // JSON snapshot — initial paint + programmatic access.
