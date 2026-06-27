@@ -107,10 +107,13 @@ function renderStats(d) {
   $('lines').textContent = d.counts.lines.toLocaleString();
 
   // cards
-  $('c-req').textContent = d.counts.requests.toLocaleString();
+  // REQUESTS + ERROR RATE follow the visible window while browsing (see
+  // updateEnds); only refresh them from the live snapshot at the live edge.
+  lastCounts = d.counts; lastErr = d.errorRate;
+  if (following) $('c-req').textContent = d.counts.requests.toLocaleString();
   $('c-reqsub').textContent = `${d.counts.requests ? Math.round((d.counts.assets / d.counts.requests) * 100) : 0}% assets`;
   $('c-rate').textContent = d.ratePerMin.toLocaleString();
-  $('c-err').textContent = d.errorRate + '%';
+  if (following) $('c-err').textContent = d.errorRate + '%';
   $('c-atk').textContent = d.counts.attacks.toLocaleString();
   $('c-atksub').textContent = d.attackRate + '% of reqs';
   $('c-alert').textContent = d.counts.alerts.toLocaleString();
@@ -275,6 +278,8 @@ let chartBucket = 1; // minutes per bar (from the server; 1 unless RPM_BUCKET_MI
 // chart's visible range; at the live edge they resume live.
 let viewScoped = false;    // true while donut + status reflect a windowed view
 let lastBySource = [];     // most recent live source breakdown (to restore on resume)
+let lastCounts = null;     // most recent live counts (to restore the cards at the edge)
+let lastErr = 0;           // most recent live error rate
 let lastScopeKey = '';     // dedupe identical visible ranges
 let scopeTimer = null;     // debounce for scope-to-view
 
@@ -383,6 +388,15 @@ function updateEnds() {
   const bs = { '2xx': 0, '3xx': 0, '4xx': 0, '5xx': 0, other: 0 };
   for (let i = li; i <= ri; i++) { const b = chartBars[i]; for (const k in bs) bs[k] += b[k] || 0; }
   renderStatus(bs);
+  // REQUESTS + ERROR RATE cards: window total while browsing, live at the edge.
+  if (!following) {
+    const tot = bs['2xx'] + bs['3xx'] + bs['4xx'] + bs['5xx'] + bs.other;
+    $('c-req').textContent = tot.toLocaleString();
+    $('c-err').textContent = (tot ? ((bs['4xx'] + bs['5xx']) / tot * 100).toFixed(1) : '0.0') + '%';
+  } else if (lastCounts) {
+    $('c-req').textContent = lastCounts.requests.toLocaleString();
+    $('c-err').textContent = lastErr + '%';
+  }
 }
 async function fetchWindow(fromM, toM) {
   try {
