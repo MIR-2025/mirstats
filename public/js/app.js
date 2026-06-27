@@ -114,7 +114,7 @@ function renderStats(d) {
   $('c-reqsub').textContent = `${d.counts.requests ? Math.round((d.counts.assets / d.counts.requests) * 100) : 0}% assets`;
   $('c-rate').textContent = d.ratePerMin.toLocaleString();
   if (following) $('c-err').textContent = d.errorRate + '%';
-  $('c-atk').textContent = d.counts.attacks.toLocaleString();
+  if (following) $('c-atk').textContent = d.counts.attacks.toLocaleString();
   $('c-atksub').textContent = d.attackRate + '% of reqs';
   $('c-alert').textContent = d.counts.alerts.toLocaleString();
   $('c-bots').textContent = d.counts.bots.toLocaleString();
@@ -396,6 +396,7 @@ function updateEnds() {
   } else if (lastCounts) {
     $('c-req').textContent = lastCounts.requests.toLocaleString();
     $('c-err').textContent = lastErr + '%';
+    $('c-atk').textContent = lastCounts.attacks.toLocaleString();
   }
 }
 async function fetchWindow(fromM, toM) {
@@ -580,8 +581,11 @@ function dropTrunc(list) {
 // Point the donut at one time window's source breakdown.
 async function scopeDonut(fromMs, toMs) {
   try {
-    const rows = await (await fetch(`/api/sources?from=${fromMs}&to=${toMs}`)).json();
-    if (Array.isArray(rows)) renderSources(dropTrunc(rows));
+    const d = await (await fetch(`/api/sources?from=${fromMs}&to=${toMs}`)).json();
+    if (d && Array.isArray(d.sources)) {
+      renderSources(dropTrunc(d.sources));
+      $('c-atk').textContent = (d.attacks || 0).toLocaleString(); // window attacks
+    }
   } catch { /* ignore */ }
 }
 // Return tail + donut + status to live.
