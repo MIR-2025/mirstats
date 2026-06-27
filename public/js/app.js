@@ -514,7 +514,7 @@ chartEl.addEventListener('wheel', (e) => {
     updateEnds();
     scheduleScope(); // zoom changes the visible window → re-scope tail + donut
   } else {
-    chartEl.scrollLeft += e.deltaY;
+    chartEl.scrollLeft += Math.sign(e.deltaY) * barW; // one bar (one bucket) per wheel notch
   }
 }, { passive: false });
 // follow/browse state + lazy edge loading
