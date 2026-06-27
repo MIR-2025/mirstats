@@ -175,6 +175,25 @@ export function createRouter({ redis, io, logStream } = {}) {
     }
   });
 
+  // Source breakdown for a time window — backs the donut following the chart's
+  // visible range. from/to are ms epochs. Returns [{ key, count }] like the live
+  // snapshot's bySource, so the client renders it with the same code.
+  router.get('/api/sources', async (req, res) => {
+    try {
+      const from = new Date(Number(req.query.from) || 0);
+      const to = new Date(Number(req.query.to) || Date.now());
+      const rows = await collections.events().aggregate([
+        { $match: { t: { $gte: from, $lt: to } } },
+        { $group: { _id: '$source', count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 60 },
+      ]).toArray();
+      res.json(rows.map((r) => ({ key: r._id, count: r.count })));
+    } catch (e) {
+      res.status(500).json({ error: String(e.message || e) });
+    }
+  });
+
   // Health check.
   router.get('/healthz', (req, res) => res.json({ ok: true }));
 

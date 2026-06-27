@@ -108,8 +108,11 @@ function renderStats(d) {
     .map(([k]) => `<span>${k} <span class="${clsColor[k]}">${d.byStatus[k].toLocaleString()}</span></span>`)
     .join('');
 
-  // sources → donut pie + clickable legend (both filter the dashboard)
-  renderSources(d.bySource);
+  // sources → donut pie + clickable legend (both filter the dashboard).
+  // While scoped to a past window the donut shows that window's breakdown, so
+  // keep the live one stashed but don't draw over the scoped view.
+  lastBySource = d.bySource;
+  if (!donutScoped) renderSources(d.bySource);
 
   // tables
   rows($('paths'), d.topPaths);
@@ -256,6 +259,12 @@ let histEarliest = histLatest;
 let loadingEdge = false;
 let chartIp = null; // when set, the chart is filtered to this IP / /24 prefix
 let chartBucket = 1; // minutes per bar (from the server; 1 unless RPM_BUCKET_MIN is set)
+// "scope to view": while browsing a past window, the tail + donut reflect the
+// chart's visible range; at the live edge they resume live.
+let donutScoped = false;   // true while the donut shows a windowed breakdown
+let lastBySource = [];     // most recent live source breakdown (to restore on resume)
+let lastScopeKey = '';     // dedupe identical visible ranges
+let scopeTimer = null;     // debounce for scope-to-view
 
 function stampMin(m) {
   const d = new Date(m * 60000);
@@ -463,6 +472,7 @@ chartEl.addEventListener('wheel', (e) => {
     chartEl.scrollLeft = idx * barW - cursorX; // keep that bar under the cursor
     renderAxis();
     updateEnds();
+    scheduleScope(); // zoom changes the visible window → re-scope tail + donut
   } else {
     chartEl.scrollLeft += e.deltaY;
   }
@@ -477,6 +487,7 @@ chartEl.addEventListener('scroll', () => {
   following = atRight && last + chartBucket > histLatest;
   if (chartEl.scrollLeft < EDGE_PX) loadOlder();
   else if (nearRight && !following) loadNewer(); // lazy-load newer toward the live edge
+  scheduleScope(); // scroll changes the visible window → re-scope tail + donut
 });
 
 // ── click a bar to pin that bucket's stored logs into the tail feed ──
@@ -492,10 +503,10 @@ function unpinTail() {
   applyTailFilter();
   tailEl.scrollTop = tailEl.scrollHeight;
 }
-async function pinBar(m) {
-  const from = m * 60000;
-  const to = (m + chartBucket) * 60000;
-  const qs = new URLSearchParams({ from: String(from), to: String(to) });
+// Pin the tail to a stored time window [fromMs, toMs] (mirrors the active tail
+// filters). Used by both click-a-bar and scope-to-view.
+async function pinRange(fromMs, toMs) {
+  const qs = new URLSearchParams({ from: String(fromMs), to: String(toMs) });
   if (tailFilter) qs.set('source', tailFilter);            // mirror the active tail filters
   const ipf = chartIp || tailIpFilter;
   if (ipf) qs.set('ip', ipf);
@@ -510,8 +521,48 @@ async function pinBar(m) {
   else tailEl.innerHTML = '<div class="ln muted">no stored logs in this interval</div>';
   tailEl.scrollTop = 0;
   const more = d.count >= d.limit ? '+' : '';
-  $('tail-pin').innerHTML = `<span class="pin-dot">●</span> ${d.count}${more} lines <span class="pin-x" title="Back to live">✕ ${hhmm(from)}–${hhmm(to)}</span>`;
+  $('tail-pin').innerHTML = `<span class="pin-dot">●</span> ${d.count}${more} lines <span class="pin-x" title="Back to live">✕ ${hhmm(fromMs)}–${hhmm(toMs)}</span>`;
 }
+function pinBar(m) { return pinRange(m * 60000, (m + chartBucket) * 60000); }
+
+// Hide phantom truncated sources (mirror of the server filter) in the windowed donut.
+function dropTrunc(list) {
+  return list.filter((s) => !list.some((t) =>
+    t.key.length === s.key.length + 1 && t.key.endsWith(s.key) && t.count > s.count * 4));
+}
+// Point the donut at one time window's source breakdown.
+async function scopeDonut(fromMs, toMs) {
+  try {
+    const rows = await (await fetch(`/api/sources?from=${fromMs}&to=${toMs}`)).json();
+    if (Array.isArray(rows)) { donutScoped = true; renderSources(dropTrunc(rows)); }
+  } catch { /* ignore */ }
+}
+// Return tail + donut to live.
+function clearScope() {
+  if (!donutScoped && !tailPinned) return;
+  donutScoped = false;
+  lastScopeKey = '';
+  renderSources(lastBySource);
+  unpinTail();
+}
+// Re-scope tail + donut to the chart's currently-visible range; at the live edge
+// resume live. Debounced via scheduleScope() so a flurry of wheel/scroll events
+// only fires one fetch once movement settles.
+async function scopeToView() {
+  if (!chartBars.length) return;
+  if (following) { clearScope(); return; }
+  const last = chartBars.length - 1;
+  const li = Math.max(0, Math.min(last, Math.floor(chartEl.scrollLeft / barW) + 1));
+  const ri = Math.max(0, Math.min(last, Math.ceil((chartEl.scrollLeft + chartEl.clientWidth) / barW) - 1));
+  const fromMs = chartBars[li].m * 60000;
+  const toMs = (chartBars[ri].m + chartBucket) * 60000;
+  const key = fromMs + '-' + toMs;
+  if (key === lastScopeKey) return;
+  lastScopeKey = key;
+  await pinRange(fromMs, toMs);
+  await scopeDonut(fromMs, toMs);
+}
+function scheduleScope() { if (scopeTimer) clearTimeout(scopeTimer); scopeTimer = setTimeout(scopeToView, 250); }
 $('tail-pin').addEventListener('click', unpinTail);
 chartEl.addEventListener('click', (e) => {
   const bar = e.target.closest('.bar');
