@@ -348,8 +348,10 @@ function renderChart() {
 // Up to 3 per-status hit counts for an edge bar, each in its segment color and
 // ordered largest-first; '' when the bar has no hits.
 function endHtml(b) {
-  if (!b || !b.total) return '';
-  return RPM_ORDER.filter(([k]) => b[k])
+  if (!b) return '';
+  const t = `<span class="rpm-end-t">${stampMin(b.m)}</span>`; // the edge bar's date + time
+  if (!b.total) return t;
+  return t + RPM_ORDER.filter(([k]) => b[k])
     .sort((x, y) => b[y[0]] - b[x[0]])
     .slice(0, 3)
     .map(([k]) => `<span class="${clsColor[k] || 'muted'}">${b[k].toLocaleString()}</span>`)
