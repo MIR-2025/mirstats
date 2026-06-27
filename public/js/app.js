@@ -493,6 +493,14 @@ chartEl.addEventListener('scroll', () => {
 // ── click a bar to pin that bucket's stored logs into the tail feed ──
 // Live lines keep recording (see appendTail) but stop drawing until "✕ live".
 const hhmm = (ms) => { const d = new Date(ms); const p = (n) => String(n).padStart(2, '0'); return `${p(d.getHours())}:${p(d.getMinutes())}`; };
+// "MM-DD HH:MM–HH:MM" within a day; "MM-DD HH:MM – MM-DD HH:MM" across days.
+function stampRange(fromMs, toMs) {
+  const p = (n) => String(n).padStart(2, '0');
+  const day = (ms) => { const d = new Date(ms); return `${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
+  return day(fromMs) === day(toMs)
+    ? `${day(fromMs)} ${hhmm(fromMs)}–${hhmm(toMs)}`
+    : `${day(fromMs)} ${hhmm(fromMs)} – ${day(toMs)} ${hhmm(toMs)}`;
+}
 function unpinTail() {
   if (!tailPinned) return;
   tailPinned = false;
@@ -523,7 +531,7 @@ async function pinRange(fromMs, toMs) {
   else tailEl.innerHTML = '<div class="ln muted">no stored logs in this interval</div>';
   tailEl.scrollTop = 0;
   const more = d.count >= d.limit ? '+' : '';
-  $('tail-pin').innerHTML = `<span class="pin-dot">●</span> ${d.count}${more} lines <span class="pin-x" title="Back to live">✕ ${hhmm(fromMs)}–${hhmm(toMs)}</span>`;
+  $('tail-pin').innerHTML = `<span class="pin-dot">●</span> ${d.count}${more} lines <span class="pin-x" title="Back to live">✕ ${stampRange(fromMs, toMs)}</span>`;
 }
 function pinBar(m) { return pinRange(m * 60000, (m + chartBucket) * 60000); }
 
