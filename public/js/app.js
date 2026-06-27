@@ -516,7 +516,9 @@ async function pinRange(fromMs, toMs) {
   tailPinned = true;
   autoScroll = false;
   tailEl.innerHTML = '';
-  const lines = d.lines || [];
+  // Only the last TAIL_MAX are kept on screen anyway — render just those instead
+  // of building (and immediately deleting) up to ~1000 rows.
+  const lines = (d.lines || []).slice(-TAIL_MAX);
   if (lines.length) { for (const t of lines) renderTail(t); applyTailFilter(); }
   else tailEl.innerHTML = '<div class="ln muted">no stored logs in this interval</div>';
   tailEl.scrollTop = 0;
@@ -559,10 +561,9 @@ async function scopeToView() {
   const key = fromMs + '-' + toMs;
   if (key === lastScopeKey) return;
   lastScopeKey = key;
-  await pinRange(fromMs, toMs);
-  await scopeDonut(fromMs, toMs);
+  await Promise.all([pinRange(fromMs, toMs), scopeDonut(fromMs, toMs)]); // fetch in parallel
 }
-function scheduleScope() { if (scopeTimer) clearTimeout(scopeTimer); scopeTimer = setTimeout(scopeToView, 250); }
+function scheduleScope() { if (scopeTimer) clearTimeout(scopeTimer); scopeTimer = setTimeout(scopeToView, 120); }
 $('tail-pin').addEventListener('click', unpinTail);
 chartEl.addEventListener('click', (e) => {
   const bar = e.target.closest('.bar');
