@@ -121,12 +121,10 @@ function renderStats(d) {
   // (the requests/minute chart is driven separately by the history store — see
   // the historical req/min chart section + chartLive())
 
-  // status split bar + legend, and sources donut — both reflect the visible
-  // window while browsing, so keep the live values stashed but don't draw over
-  // the scoped view.
-  lastByStatus = d.byStatus;
+  // sources donut reflects the visible window while browsing; keep the live one
+  // stashed. (The status split is driven by the visible bars — see updateEnds.)
   lastBySource = d.bySource;
-  if (!viewScoped) { renderStatus(d.byStatus); renderSources(d.bySource); }
+  if (!viewScoped) renderSources(d.bySource);
 
   // tables
   rows($('paths'), d.topPaths);
@@ -277,7 +275,6 @@ let chartBucket = 1; // minutes per bar (from the server; 1 unless RPM_BUCKET_MI
 // chart's visible range; at the live edge they resume live.
 let viewScoped = false;    // true while donut + status reflect a windowed view
 let lastBySource = [];     // most recent live source breakdown (to restore on resume)
-let lastByStatus = {};     // most recent live status breakdown (to restore on resume)
 let lastScopeKey = '';     // dedupe identical visible ranges
 let scopeTimer = null;     // debounce for scope-to-view
 
@@ -375,6 +372,11 @@ function updateEnds() {
   R.innerHTML = endHtml(chartBars[ri]);
   const bars = chartEl.children; // 1:1 with chartBars (appended in order)
   if (bars[li]) bars[li].classList.add('edge'); // only the left edge bar is tinted
+  // status split bar + legend reflect exactly the visible bars (no fetch),
+  // updated on every render / scroll / zoom / live tick.
+  const bs = { '2xx': 0, '3xx': 0, '4xx': 0, '5xx': 0, other: 0 };
+  for (let i = li; i <= ri; i++) { const b = chartBars[i]; for (const k in bs) bs[k] += b[k] || 0; }
+  renderStatus(bs);
 }
 async function fetchWindow(fromM, toM) {
   try {
@@ -567,7 +569,6 @@ function clearScope() {
   if (!viewScoped && !tailPinned) return;
   viewScoped = false;
   lastScopeKey = '';
-  renderStatus(lastByStatus);
   renderSources(lastBySource);
   unpinTail();
 }
@@ -586,10 +587,6 @@ async function scopeToView() {
   if (key === lastScopeKey) return;
   lastScopeKey = key;
   viewScoped = true;
-  // status split: sum the visible bars (they already carry per-class counts — no fetch)
-  const bs = { '2xx': 0, '3xx': 0, '4xx': 0, '5xx': 0, other: 0 };
-  for (let i = li; i <= ri; i++) { const b = chartBars[i]; for (const k in bs) bs[k] += b[k] || 0; }
-  renderStatus(bs);
   await Promise.all([pinRange(fromMs, toMs), scopeDonut(fromMs, toMs)]); // tail + donut in parallel
 }
 function scheduleScope() { if (scopeTimer) clearTimeout(scopeTimer); scopeTimer = setTimeout(scopeToView, 120); }
