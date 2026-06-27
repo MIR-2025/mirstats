@@ -81,6 +81,23 @@ function rows(tbody, items, fmtVal) {
     .join('');
 }
 
+// Status split bar + legend from a byStatus map { '2xx': n, '3xx': n, … }.
+function renderStatus(byStatus) {
+  const order = [['2xx', 's2'], ['3xx', 's3'], ['4xx', 's4'], ['5xx', 's5'], ['other', 'so']];
+  const totalS = order.reduce((a, [k]) => a + (byStatus[k] || 0), 0) || 1;
+  $('status-bar').innerHTML = order
+    .filter(([k]) => byStatus[k])
+    .map(([k, c]) => {
+      const pct = (byStatus[k] / totalS) * 100;
+      return `<span class="${c}" style="width:${pct}%" data-k="${k}" data-count="${byStatus[k]}" data-pct="${pct.toFixed(1)}">${pct > 7 ? k : ''}</span>`;
+    })
+    .join('');
+  $('status-legend').innerHTML = order
+    .filter(([k]) => byStatus[k])
+    .map(([k]) => `<span>${k} <span class="${clsColor[k]}">${byStatus[k].toLocaleString()}</span></span>`)
+    .join('');
+}
+
 function renderStats(d) {
   // upstream + header
   const up = $('upstream');
@@ -104,26 +121,12 @@ function renderStats(d) {
   // (the requests/minute chart is driven separately by the history store — see
   // the historical req/min chart section + chartLive())
 
-  // status split bar
-  const order = [['2xx', 's2'], ['3xx', 's3'], ['4xx', 's4'], ['5xx', 's5'], ['other', 'so']];
-  const totalS = order.reduce((a, [k]) => a + (d.byStatus[k] || 0), 0) || 1;
-  $('status-bar').innerHTML = order
-    .filter(([k]) => d.byStatus[k])
-    .map(([k, c]) => {
-      const pct = (d.byStatus[k] / totalS) * 100;
-      return `<span class="${c}" style="width:${pct}%" data-k="${k}" data-count="${d.byStatus[k]}" data-pct="${pct.toFixed(1)}">${pct > 7 ? k : ''}</span>`;
-    })
-    .join('');
-  $('status-legend').innerHTML = order
-    .filter(([k]) => d.byStatus[k])
-    .map(([k]) => `<span>${k} <span class="${clsColor[k]}">${d.byStatus[k].toLocaleString()}</span></span>`)
-    .join('');
-
-  // sources → donut pie + clickable legend (both filter the dashboard).
-  // While scoped to a past window the donut shows that window's breakdown, so
-  // keep the live one stashed but don't draw over the scoped view.
+  // status split bar + legend, and sources donut — both reflect the visible
+  // window while browsing, so keep the live values stashed but don't draw over
+  // the scoped view.
+  lastByStatus = d.byStatus;
   lastBySource = d.bySource;
-  if (!donutScoped) renderSources(d.bySource);
+  if (!viewScoped) { renderStatus(d.byStatus); renderSources(d.bySource); }
 
   // tables
   rows($('paths'), d.topPaths);
@@ -272,8 +275,9 @@ let chartIp = null; // when set, the chart is filtered to this IP / /24 prefix
 let chartBucket = 1; // minutes per bar (from the server; 1 unless RPM_BUCKET_MIN is set)
 // "scope to view": while browsing a past window, the tail + donut reflect the
 // chart's visible range; at the live edge they resume live.
-let donutScoped = false;   // true while the donut shows a windowed breakdown
+let viewScoped = false;    // true while donut + status reflect a windowed view
 let lastBySource = [];     // most recent live source breakdown (to restore on resume)
+let lastByStatus = {};     // most recent live status breakdown (to restore on resume)
 let lastScopeKey = '';     // dedupe identical visible ranges
 let scopeTimer = null;     // debounce for scope-to-view
 
@@ -555,14 +559,15 @@ function dropTrunc(list) {
 async function scopeDonut(fromMs, toMs) {
   try {
     const rows = await (await fetch(`/api/sources?from=${fromMs}&to=${toMs}`)).json();
-    if (Array.isArray(rows)) { donutScoped = true; renderSources(dropTrunc(rows)); }
+    if (Array.isArray(rows)) renderSources(dropTrunc(rows));
   } catch { /* ignore */ }
 }
-// Return tail + donut to live.
+// Return tail + donut + status to live.
 function clearScope() {
-  if (!donutScoped && !tailPinned) return;
-  donutScoped = false;
+  if (!viewScoped && !tailPinned) return;
+  viewScoped = false;
   lastScopeKey = '';
+  renderStatus(lastByStatus);
   renderSources(lastBySource);
   unpinTail();
 }
@@ -580,7 +585,12 @@ async function scopeToView() {
   const key = fromMs + '-' + toMs;
   if (key === lastScopeKey) return;
   lastScopeKey = key;
-  await Promise.all([pinRange(fromMs, toMs), scopeDonut(fromMs, toMs)]); // fetch in parallel
+  viewScoped = true;
+  // status split: sum the visible bars (they already carry per-class counts — no fetch)
+  const bs = { '2xx': 0, '3xx': 0, '4xx': 0, '5xx': 0, other: 0 };
+  for (let i = li; i <= ri; i++) { const b = chartBars[i]; for (const k in bs) bs[k] += b[k] || 0; }
+  renderStatus(bs);
+  await Promise.all([pinRange(fromMs, toMs), scopeDonut(fromMs, toMs)]); // tail + donut in parallel
 }
 function scheduleScope() { if (scopeTimer) clearTimeout(scopeTimer); scopeTimer = setTimeout(scopeToView, 120); }
 $('tail-pin').addEventListener('click', unpinTail);
