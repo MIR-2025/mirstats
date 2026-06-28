@@ -44,6 +44,9 @@ client (no front-end build step).
   log (TTL-pruned) over a date range; matches autocomplete in a dropdown, and
   picking one shows that IP/subnet's status breakdown, top paths, and time span,
   and filters the chart to that IP.
+- **Infrastructure health** (optional) — a "like-netdata" card showing
+  CPU/RAM/disk/load/network for a few Linux servers, pulled over SSH (no agent
+  installed on the targets). See **[docs/infrastructure.md](docs/infrastructure.md)**.
 - **Alerts feed** — surfaces `*** ALERT ***` lines from the upstream feed.
 - **Tolerant parser** — extracts source / method / path / status / IP generically,
   so it handles nginx, Apache combined, JSON-ish, and custom formats without

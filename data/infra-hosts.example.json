@@ -1,4 +1,5 @@
 [
-  { "label": "web1", "ssh": "deploy@10.0.0.1", "key": "/home/youruser/.ssh/id_ed25519", "disk": "/" },
-  { "label": "db1",  "ssh": "deploy@10.0.0.2", "key": "/home/youruser/.ssh/id_ed25519" }
+  "deploy@10.0.0.1",
+  "deploy@10.0.0.2",
+  { "label": "db", "ssh": "deploy@10.0.0.3", "disk": "/data" }
 ]
