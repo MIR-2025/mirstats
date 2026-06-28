@@ -1,0 +1,9 @@
+# Back up the permanent logs (reports.jsonl, rpm-history.jsonl) but never the
+# high-churn dedup/state files.
+reporter-state.json
+stats-state.json
+analyses.json
+*.tmp
+
+# infra monitoring host list (server addresses) — keep the .example committed
+infra-hosts.json
