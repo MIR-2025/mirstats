@@ -60,6 +60,9 @@
     </div>
   </div>
 
+  <!-- Infrastructure: one card per server (populated by renderInfra) -->
+  <div class="row g-2 mb-3" id="infra-cards"></div>
+
   <div class="row g-3">
     <!-- left column -->
     <div class="col-lg-7">
@@ -133,7 +136,14 @@
           <span>infrastructure</span><span class="acc-caret">▸</span>
         </div>
         <div id="acc-infra" class="collapse show">
-          <div class="card-body py-2"><div id="infra"><div class="muted small">no hosts configured</div></div></div>
+          <div class="card-body py-2">
+            <div class="ipq-row">
+              <input type="text" id="srv-add" class="ipq-input" placeholder="user@host  (e.g. deploy@10.0.0.1)" autocomplete="off" spellcheck="false">
+              <button type="button" id="srv-add-btn" class="rpm-now">add</button>
+            </div>
+            <div id="srv-add-msg" class="muted small"></div>
+            <div id="infra-hosts"></div>
+          </div>
         </div>
       </div>
       <div class="card mb-3">

@@ -201,6 +201,18 @@ export function createRouter({ redis, io, logStream, infra } = {}) {
   // Latest infrastructure health snapshot — initial paint before the next push.
   router.get('/api/infra', (req, res) => res.json(infra ? infra.latest() : []));
 
+  // Manage the monitored host list from the dashboard (behind the same auth).
+  router.get('/api/infra/hosts', (req, res) => res.json(infra ? infra.configList() : []));
+  router.post('/api/infra/hosts', (req, res) => {
+    if (!infra) return res.status(503).json({ error: 'infra not running' });
+    try { res.json(infra.addHost(req.body?.ssh ? req.body : String(req.body?.host || ''))); }
+    catch (e) { res.status(400).json({ error: String(e.message || e) }); }
+  });
+  router.post('/api/infra/hosts/remove', (req, res) => {
+    if (!infra) return res.status(503).json({ error: 'infra not running' });
+    res.json(infra.removeHost(String(req.body?.label || '')));
+  });
+
   // Health check.
   router.get('/healthz', (req, res) => res.json({ ok: true }));
 

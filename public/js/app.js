@@ -844,25 +844,63 @@ function infraBar(label, pct) {
   if (pct == null) return '';
   return `<div class="im"><span class="im-l">${label}</span><span class="im-bar"><span class="im-fill ${pctCls(pct)}" style="width:${Math.min(100, pct)}%"></span></span><span class="im-v">${pct}%</span></div>`;
 }
+// Live per-server cards in the row under the stat strip.
 function renderInfra(hosts) {
-  const el = $('infra');
+  const el = $('infra-cards');
   if (!el) return;
-  if (!Array.isArray(hosts) || !hosts.length) { el.innerHTML = '<div class="muted small">no hosts configured</div>'; return; }
+  if (!Array.isArray(hosts) || !hosts.length) { el.innerHTML = ''; return; }
   el.innerHTML = hosts.map((s) => {
+    let body;
     if (s.offline) {
-      return `<div class="infra-row off"><div class="infra-h"><span class="infra-dot off"></span>${esc(s.label)}</div>` +
-        `<div class="infra-meta muted">offline${s.error ? ' · ' + esc(s.error) : ''}</div></div>`;
+      body = `<div class="srv-h"><span class="infra-dot off"></span><span class="srv-name">${esc(s.label)}</span>` +
+        `<span class="srv-up muted">offline</span></div><div class="muted small srv-off">${esc(s.error || 'unreachable')}</div>`;
+    } else {
+      const load = s.load ? s.load.map((x) => x.toFixed(2)).join(' ') : '–';
+      body = `<div class="srv-h"><span class="infra-dot ${s.warn ? 'warn' : 'ok'}"></span>` +
+        `<span class="srv-name">${esc(s.label)}</span>${infraSpark(s.hist)}</div>` +
+        infraBar('cpu', s.cpu) + infraBar('mem', s.mem) + (s.disk ? infraBar('disk', s.disk.pct) : '') +
+        `<div class="infra-meta"><span class="muted">load</span> ${load} <span class="muted">net</span> ` +
+        `↓${infraRate(s.rx)} ↑${infraRate(s.tx)} <span class="muted">· ${infraUp(s.up)}</span></div>`;
     }
-    const load = s.load ? s.load.map((x) => x.toFixed(2)).join(' ') : '–';
-    return `<div class="infra-row${s.warn ? ' warn' : ''}">` +
-      `<div class="infra-h"><span class="infra-dot ${s.warn ? 'warn' : 'ok'}"></span>${esc(s.label)}` +
-      `<span class="muted infra-host">${esc(s.host || '')}</span>${infraSpark(s.hist)}` +
-      `<span class="muted infra-up">${infraUp(s.up)}</span></div>` +
-      infraBar('cpu', s.cpu) + infraBar('mem', s.mem) + (s.disk ? infraBar('disk', s.disk.pct) : '') +
-      `<div class="infra-meta"><span class="muted">load</span> ${load}` +
-      `<span class="muted"> net</span> ↓${infraRate(s.rx)} ↑${infraRate(s.tx)}</div></div>`;
+    return `<div class="col-6 col-md"><div class="card stat-card srv-card h-100${s.warn ? ' warn' : ''}">` +
+      `<div class="card-body py-2">${body}</div></div></div>`;
   }).join('');
 }
+// Configured-host list in the sidebar "infrastructure" card, with remove buttons.
+function renderInfraHosts(list) {
+  const el = $('infra-hosts');
+  if (!el) return;
+  if (!Array.isArray(list) || !list.length) { el.innerHTML = '<div class="muted small">no servers yet — add one above</div>'; return; }
+  el.innerHTML = list.map((h) =>
+    `<div class="srv-cfg"><span class="srv-cfg-l">${esc(h.label)}</span>` +
+    `<span class="muted srv-cfg-s">${esc(h.ssh)}</span>` +
+    `<span class="srv-rm" data-label="${esc(h.label)}" role="button" title="remove">✕</span></div>`).join('');
+}
+async function infraAdd() {
+  const inp = $('srv-add'); const msg = $('srv-add-msg');
+  const ssh = (inp.value || '').trim();
+  if (!ssh) return;
+  msg.textContent = 'adding…'; msg.className = 'muted small';
+  try {
+    const r = await fetch('/api/infra/hosts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ssh }) });
+    const d = await r.json();
+    if (!r.ok) { msg.textContent = d.error || 'failed'; msg.className = 'red small'; return; }
+    inp.value = ''; msg.textContent = ''; renderInfraHosts(d);
+  } catch { msg.textContent = 'request failed'; msg.className = 'red small'; }
+}
+async function infraRemove(label) {
+  try {
+    const r = await fetch('/api/infra/hosts/remove', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ label }) });
+    renderInfraHosts(await r.json());
+  } catch { /* ignore */ }
+}
+$('srv-add-btn')?.addEventListener('click', infraAdd);
+$('srv-add')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') infraAdd(); });
+$('infra-hosts')?.addEventListener('click', (e) => {
+  const rm = e.target.closest('.srv-rm');
+  if (rm) infraRemove(rm.dataset.label);
+});
+fetch('/api/infra/hosts').then((r) => r.json()).then(renderInfraHosts).catch(() => {});
 
 // ── AI log analysis ── pick a day, server summarizes it via the Anthropic API.
 const aiOut = $('ai-out');

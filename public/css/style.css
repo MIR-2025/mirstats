@@ -189,6 +189,25 @@ table.dash-table tr:hover td { background: var(--row-hover); }
 .infra-meta { font-size: 0.68rem; margin-top: 2px; }
 .infra-row.off { opacity: 0.7; }
 
+/* per-server cards (row under the stat strip) */
+.srv-card { font-family: var(--mono); font-size: 0.72rem; }
+.srv-card.warn { border-color: var(--red); }
+.srv-h { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.srv-name { font-weight: 700; font-size: 0.82rem; }
+.srv-up { margin-left: auto; font-size: 0.66rem; white-space: nowrap; }
+.srv-card .infra-spark { margin-left: auto; }
+.srv-card .srv-up { margin-left: 6px; }
+.srv-off { margin-top: 2px; word-break: break-word; }
+
+/* manage-servers list in the sidebar card */
+.srv-cfg { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 0.72rem;
+  padding: 3px 0; border-top: 1px solid var(--table-border); }
+.srv-cfg:first-child { border-top: none; }
+.srv-cfg-l { font-weight: 700; }
+.srv-cfg-s { flex: 1; font-size: 0.66rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.srv-rm { cursor: pointer; color: var(--muted); padding: 0 3px; }
+.srv-rm:hover { color: var(--red); }
+
 /* req/min rolling time axis (scrolls in sync with the bars) */
 .rpm-axis-wrap { position: relative; height: 26px; overflow: hidden; }
 .rpm-axis { position: relative; height: 26px; will-change: transform; }

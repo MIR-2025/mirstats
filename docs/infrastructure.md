@@ -83,6 +83,15 @@ You can mix strings and objects in the same file.
 > The file is **gitignored** — it holds server addresses and should not be
 > committed. A committed `data/infra-hosts.example.json` shows the format.
 
+### Add / remove from the dashboard
+
+The **infrastructure** card (right column) has an **add a server** box and a list
+of the configured hosts with a ✕ to remove each. Adding `user@host` there polls
+it immediately and writes it to `data/infra-hosts.json` for you — no restart
+needed. (Advanced fields like a custom `disk`/`key`/`port` still need the file.)
+The ssh target is validated server-side, so it can never be an ssh option or
+contain shell characters.
+
 ---
 
 ## Keys & connecting
