@@ -168,6 +168,27 @@ table.dash-table tr:hover td { background: var(--row-hover); }
 #rpm-end-r { right: 3px; align-items: flex-end; }
 .rpm-end-t { color: var(--muted); font-size: 0.56rem; margin-bottom: 1px; white-space: nowrap; } /* edge bar date+time */
 
+/* infrastructure health (per-server rows) */
+#infra { font-family: var(--mono); font-size: 0.72rem; }
+.infra-row { padding: 5px 0; border-top: 1px solid var(--table-border); }
+.infra-row:first-child { border-top: none; }
+.infra-row.warn { background: color-mix(in srgb, var(--red) 8%, transparent); border-radius: 3px; }
+.infra-h { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+.infra-dot { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; background: var(--green); }
+.infra-dot.warn { background: var(--red); } .infra-dot.off { background: var(--muted); }
+.infra-host { font-size: 0.66rem; }
+.infra-up { margin-left: auto; font-size: 0.66rem; white-space: nowrap; }
+.infra-spark { width: 64px; height: 14px; }
+.infra-spark polyline { fill: none; stroke: var(--teal); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.im { display: flex; align-items: center; gap: 6px; line-height: 1.6; }
+.im-l { width: 28px; color: var(--muted); }
+.im-bar { flex: 1; height: 7px; background: var(--chip-bg); border-radius: 3px; overflow: hidden; }
+.im-fill { display: block; height: 100%; }
+.im-fill.ok { background: var(--green); } .im-fill.warn { background: var(--yellow); } .im-fill.crit { background: var(--red); }
+.im-v { width: 34px; text-align: right; }
+.infra-meta { font-size: 0.68rem; margin-top: 2px; }
+.infra-row.off { opacity: 0.7; }
+
 /* req/min rolling time axis (scrolls in sync with the bars) */
 .rpm-axis-wrap { position: relative; height: 26px; overflow: hidden; }
 .rpm-axis { position: relative; height: 26px; will-change: transform; }

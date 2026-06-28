@@ -7,7 +7,7 @@ import { collections } from './lib/mongo.js';
 
 const escapeRx = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-export function createRouter({ redis, io, logStream } = {}) {
+export function createRouter({ redis, io, logStream, infra } = {}) {
   const router = express.Router();
 
   router.use('/auth', authRoutes);
@@ -197,6 +197,9 @@ export function createRouter({ redis, io, logStream } = {}) {
       res.status(500).json({ error: String(e.message || e) });
     }
   });
+
+  // Latest infrastructure health snapshot — initial paint before the next push.
+  router.get('/api/infra', (req, res) => res.json(infra ? infra.latest() : []));
 
   // Health check.
   router.get('/healthz', (req, res) => res.json({ ok: true }));

@@ -12,6 +12,7 @@ import { connectRedis, redis, sessionMiddleware } from './lib/redis.js';
 import { accessLogger } from './middleware/logger.js';
 import { createRouter } from './router.js';
 import { startLogStream } from './lib/logStream.js';
+import { createInfra } from './lib/infra.js';
 import { basicAuth, checkBasicAuth, basicAuthEnabled } from './middleware/basicAuth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -59,8 +60,11 @@ async function start() {
   // rolling in-memory stats that we push to dashboards.
   const logStream = startLogStream(io);
 
+  // ── Infrastructure health (SSH-pulled per-server metrics → "stats" room) ──
+  const infra = createInfra(io);
+
   // ── Routes ──
-  app.use('/', createRouter({ redis, io, logStream }));
+  app.use('/', createRouter({ redis, io, logStream, infra }));
 
   // 404 fallback.
   app.use((req, res) => {
@@ -85,6 +89,7 @@ async function start() {
   const shutdown = async () => {
     server.close();
     logStream.stop(); // flush cumulative stats to disk + close the upstream feed
+    infra.stop();
     await redis.quit().catch(() => {});
     await closeMongo().catch(() => {});
     process.exit(0);

@@ -815,9 +815,54 @@ loadTail();
 
 socket.on('stats', (d) => { renderStats(d); chartLive(d); });
 socket.on('tail', appendTail);
+socket.on('infra', renderInfra);
 
 // Initial paint from the JSON API in case the first snapshot is slow.
 fetch('/api/stats').then((r) => r.json()).then((d) => { if (d && d.counts) renderStats(d); }).catch(() => {});
+fetch('/api/infra').then((r) => r.json()).then(renderInfra).catch(() => {});
+
+// ── infrastructure health (SSH-pulled per-server metrics) ──
+function infraRate(bps) {
+  if (bps == null) return '–';
+  if (bps >= 1e6) return (bps / 1e6).toFixed(1) + 'M/s';
+  if (bps >= 1e3) return Math.round(bps / 1e3) + 'K/s';
+  return Math.round(bps) + 'B/s';
+}
+function infraUp(sec) {
+  const d = Math.floor(sec / 86400), h = Math.floor((sec % 86400) / 3600), m = Math.floor((sec % 3600) / 60);
+  return d ? `${d}d ${h}h` : h ? `${h}h ${m}m` : `${m}m`;
+}
+const pctCls = (p) => (p >= 90 ? 'crit' : p >= 75 ? 'warn' : 'ok');
+function infraSpark(hist) {
+  const v = (hist || []).map((x) => x.cpu).filter((x) => x != null);
+  if (v.length < 3) return '';
+  const W = 64, H = 14, n = v.length;
+  const pts = v.map((x, i) => `${(i / (n - 1) * W).toFixed(1)},${(H - x / 100 * H).toFixed(1)}`).join(' ');
+  return `<svg class="infra-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><polyline points="${pts}"/></svg>`;
+}
+function infraBar(label, pct) {
+  if (pct == null) return '';
+  return `<div class="im"><span class="im-l">${label}</span><span class="im-bar"><span class="im-fill ${pctCls(pct)}" style="width:${Math.min(100, pct)}%"></span></span><span class="im-v">${pct}%</span></div>`;
+}
+function renderInfra(hosts) {
+  const el = $('infra');
+  if (!el) return;
+  if (!Array.isArray(hosts) || !hosts.length) { el.innerHTML = '<div class="muted small">no hosts configured</div>'; return; }
+  el.innerHTML = hosts.map((s) => {
+    if (s.offline) {
+      return `<div class="infra-row off"><div class="infra-h"><span class="infra-dot off"></span>${esc(s.label)}</div>` +
+        `<div class="infra-meta muted">offline${s.error ? ' · ' + esc(s.error) : ''}</div></div>`;
+    }
+    const load = s.load ? s.load.map((x) => x.toFixed(2)).join(' ') : '–';
+    return `<div class="infra-row${s.warn ? ' warn' : ''}">` +
+      `<div class="infra-h"><span class="infra-dot ${s.warn ? 'warn' : 'ok'}"></span>${esc(s.label)}` +
+      `<span class="muted infra-host">${esc(s.host || '')}</span>${infraSpark(s.hist)}` +
+      `<span class="muted infra-up">${infraUp(s.up)}</span></div>` +
+      infraBar('cpu', s.cpu) + infraBar('mem', s.mem) + (s.disk ? infraBar('disk', s.disk.pct) : '') +
+      `<div class="infra-meta"><span class="muted">load</span> ${load}` +
+      `<span class="muted"> net</span> ↓${infraRate(s.rx)} ↑${infraRate(s.tx)}</div></div>`;
+  }).join('');
+}
 
 // ── AI log analysis ── pick a day, server summarizes it via the Anthropic API.
 const aiOut = $('ai-out');
