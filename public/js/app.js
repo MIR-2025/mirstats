@@ -952,7 +952,13 @@ function infraUp(sec) {
   const d = Math.floor(sec / 86400), h = Math.floor((sec % 86400) / 3600), m = Math.floor((sec % 3600) / 60);
   return d ? `${d}d ${h}h` : h ? `${h}h ${m}m` : `${m}m`;
 }
-const pctCls = (p) => (p >= 90 ? 'crit' : p >= 75 ? 'warn' : 'ok');
+// Colour a metric bar by its env-driven threshold (sent per host as warnAt):
+// red at/above the crit threshold, amber within `margin` points below it.
+function pctCls(p, crit = 90, margin = 15) {
+  if (p >= crit) return 'crit';
+  if (p >= crit - margin) return 'warn';
+  return 'ok';
+}
 function infraSpark(hist) {
   const v = (hist || []).map((x) => x.cpu).filter((x) => x != null);
   if (v.length < 3) return '';
@@ -960,9 +966,9 @@ function infraSpark(hist) {
   const pts = v.map((x, i) => `${(i / (n - 1) * W).toFixed(1)},${(H - x / 100 * H).toFixed(1)}`).join(' ');
   return `<svg class="infra-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><polyline points="${pts}"/></svg>`;
 }
-function infraBar(label, pct) {
+function infraBar(label, pct, crit, margin) {
   if (pct == null) return '';
-  return `<div class="im"><span class="im-l">${label}</span><span class="im-bar"><span class="im-fill ${pctCls(pct)}" style="width:${Math.min(100, pct)}%"></span></span><span class="im-v">${pct}%</span></div>`;
+  return `<div class="im"><span class="im-l">${label}</span><span class="im-bar"><span class="im-fill ${pctCls(pct, crit, margin)}" style="width:${Math.min(100, pct)}%"></span></span><span class="im-v">${pct}%</span></div>`;
 }
 // Live per-server cards in the row under the stat strip.
 function renderInfra(hosts) {
@@ -979,7 +985,9 @@ function renderInfra(hosts) {
       const host = s.host && s.host !== s.label ? `<span class="srv-host muted">${esc(s.host)}</span>` : '';
       body = `<div class="srv-h"><span class="infra-dot ${s.warn ? 'warn' : 'ok'}"></span>` +
         `<span class="srv-name">${esc(s.label)}</span>${host}${infraSpark(s.hist)}</div>` +
-        infraBar('cpu', s.cpu) + infraBar('mem', s.mem) + (s.disk ? infraBar('disk', s.disk.pct) : '') +
+        infraBar('cpu', s.cpu, s.warnAt && s.warnAt.cpu, s.warnAt && s.warnAt.margin) +
+        infraBar('mem', s.mem, s.warnAt && s.warnAt.mem, s.warnAt && s.warnAt.margin) +
+        (s.disk ? infraBar('disk', s.disk.pct, s.warnAt && s.warnAt.disk, s.warnAt && s.warnAt.margin) : '') +
         `<div class="infra-meta"><span class="muted">load</span> ${load} <span class="muted">net</span> ` +
         `↓${infraRate(s.rx)} ↑${infraRate(s.tx)} <span class="muted">· ${infraUp(s.up)}</span></div>`;
     }

@@ -219,6 +219,7 @@ All optional; sensible defaults shown.
 | `INFRA_MEM_WARN` | `90` | flag when memory used % ≥ this |
 | `INFRA_DISK_WARN` | `90` | flag when disk used % ≥ this |
 | `INFRA_LOAD_WARN` | `1.5` | flag when 1-min load average **per core** ≥ this |
+| `INFRA_WARN_MARGIN` | `15` | per-metric bars turn amber this many points below the crit (`*_WARN`) threshold; red at/above it |
 
 `REPORT_DATA_DIR` (shared with the reporter/history) also moves where the host
 file and the SSH control sockets live, if you've set it.
