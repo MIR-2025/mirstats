@@ -7,3 +7,6 @@ analyses.json
 
 # infra monitoring host list (server addresses) — keep the .example committed
 infra-hosts.json
+
+# geolocation DB (regenerable via tools/fetch-geo.sh; ~11MB)
+geo-country-*.csv

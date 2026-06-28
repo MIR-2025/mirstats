@@ -67,6 +67,14 @@ function sourceColor(s) {
 }
 const clsColor = { '2xx': 'green', '3xx': 'yellow', '4xx': 'red', '5xx': 'crit', '1xx': 'muted', other: 'muted' };
 
+// Country code → flag emoji + English name (both built-in; no data needed).
+const regionNames = (() => { try { return new Intl.DisplayNames(['en'], { type: 'region' }); } catch { return null; } })();
+function countryName(cc) { try { return (regionNames && regionNames.of(cc)) || cc; } catch { return cc; } }
+function flagFor(cc) {
+  if (!/^[A-Za-z]{2}$/.test(cc || '')) return '🏴';
+  return cc.toUpperCase().replace(/./g, (c) => String.fromCodePoint(127397 + c.charCodeAt(0)));
+}
+
 function fmtUptime(ms) {
   const s = Math.floor(ms / 1000), d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
   if (d) return `${d}d ${h}h`;
@@ -132,6 +140,8 @@ function renderStats(d) {
   // tables
   rows($('paths'), d.topPaths);
   rows($('ips'), d.topIps);
+  rows($('countries'), d.topCountries || [], (it) =>
+    `<span class="flag">${flagFor(it.key)}</span> ${esc(countryName(it.key))} <span class="muted">${esc(it.key)}</span>`);
   rows($('attackers'), d.topAttackers, (it) => {
     const links = SERVICES.map((s) =>
       `<a class="svc" href="${s.url(it.key)}" target="_blank" rel="noopener noreferrer" title="${s.name}: ${esc(it.key)}"><img src="${s.icon}" alt="${s.name}" width="14" height="14" loading="lazy"></a>`

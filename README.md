@@ -34,6 +34,8 @@ client (no front-end build step).
   until `ANTHROPIC_API_KEY` is set. See [AI log analysis](#ai-log-analysis-optional).
 - **Light / dark theme** toggle (remembered across reloads).
 - **Top paths / IPs / methods / sources** (sources as a donut with hover-highlight).
+- **Geolocation** — a top-countries breakdown of traffic, via a local DB-IP Lite
+  database (CC-BY, **no account/API**). Run `tools/fetch-geo.sh` to fetch it.
 - **Top attackers** — IPs hitting credential-probe / scanner paths (`.env`,
   `.git`, `wp-admin`, `xmlrpc`, `actuator`, `/etc/passwd`, …), each linking out to
   **AbuseIPDB** and **ipinfo** for the IP.
