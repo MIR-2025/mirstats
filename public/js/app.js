@@ -374,7 +374,19 @@ function scalePeak() {
   const med = t[t.length >> 1];
   return Math.max(1, p95, med * 3);
 }
+// Collapse any duplicate-minute bars (e.g. from an earlier seam-overlap) so each
+// bucket renders once; the later copy (a more complete server fetch) wins. Seam
+// dupes are adjacent, so an in-place pass is enough and self-heals live state.
+function dedupeBars() {
+  let w = 0;
+  for (let i = 0; i < chartBars.length; i++) {
+    if (w > 0 && chartBars[i].m === chartBars[w - 1].m) chartBars[w - 1] = chartBars[i];
+    else chartBars[w++] = chartBars[i];
+  }
+  if (w !== chartBars.length) chartBars.length = w;
+}
 function renderChart() {
+  dedupeBars();
   chartPeak = scalePeak();
   const frag = document.createDocumentFragment();
   for (const b of chartBars) frag.appendChild(makeBar(b, chartPeak));
@@ -418,10 +430,12 @@ function updateEnds() {
   if (av) av.textContent = chartBars.length ? `60m avg ${Math.round(avg60())}/${bucketUnit()}` : '';
   for (const el of chartEl.querySelectorAll('.bar.edge')) el.classList.remove('edge');
   if (!chartBars.length) { L.innerHTML = ''; R.innerHTML = ''; return; }
+  const vw = chartEl.clientWidth;
+  if (vw <= 0) return; // chart not laid out (collapsed/hidden) → don't stamp garbage edges
   const last = chartBars.length - 1;
   // left: one bar inward — the exact left-edge bar is usually clipped/hidden
   const li = Math.max(0, Math.min(last, Math.floor(chartEl.scrollLeft / barW) + 1));
-  const ri = Math.max(0, Math.min(last, Math.ceil((chartEl.scrollLeft + chartEl.clientWidth) / barW) - 1));
+  const ri = Math.max(0, Math.min(last, Math.ceil((chartEl.scrollLeft + vw) / barW) - 1));
   L.innerHTML = endHtml(chartBars[li]);
   R.innerHTML = endHtml(chartBars[ri]);
   const bars = chartEl.children; // 1:1 with chartBars (appended in order)
@@ -503,7 +517,8 @@ async function loadOlder() {
   if (loadingEdge || !chartBars.length || chartBars[0].m <= histEarliest) return;
   loadingEdge = true;
   const toM = chartBars[0].m - 1;
-  const older = await fetchWindow(Math.max(histEarliest, toM - edgeSpanMin() + 1), toM);
+  const older = (await fetchWindow(Math.max(histEarliest, toM - edgeSpanMin() + 1), toM))
+    .filter((b) => b.m <= toM); // server snaps the range to bucket boundaries → drop any seam overlap
   if (older.length) {
     chartBars = older.concat(chartBars);
     if (chartBars.length > DOM_MAX) chartBars = chartBars.slice(0, DOM_MAX);
@@ -517,7 +532,8 @@ async function loadNewer() {
   const last = chartBars[chartBars.length - 1].m;
   if (last >= histLatest) return;
   loadingEdge = true;
-  const newer = await fetchWindow(last + 1, Math.min(histLatest, last + edgeSpanMin()));
+  const newer = (await fetchWindow(last + 1, Math.min(histLatest, last + edgeSpanMin())))
+    .filter((b) => b.m > last); // server snaps `from` down to a bucket boundary → drop the duplicate seam bar
   if (newer.length) {
     chartBars = chartBars.concat(newer);
     let removed = 0;
