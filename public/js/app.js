@@ -491,11 +491,19 @@ async function fillToScrollable() {
     await loadOlder();
   }
 }
+// Minutes to fetch per edge-load. Must be wide enough that one chunk's pixel
+// width (bars * barW) clears the EDGE_PX trigger zone — otherwise, when zoomed
+// out (small barW), the load's own scroll-reposition lands back inside the zone
+// and re-fires the handler forever, loading to the data boundary on its own.
+function edgeSpanMin() {
+  const minBars = Math.ceil(EDGE_PX / barW) + 20;
+  return Math.max(CHUNK, minBars * chartBucket);
+}
 async function loadOlder() {
   if (loadingEdge || !chartBars.length || chartBars[0].m <= histEarliest) return;
   loadingEdge = true;
   const toM = chartBars[0].m - 1;
-  const older = await fetchWindow(Math.max(histEarliest, toM - CHUNK + 1), toM);
+  const older = await fetchWindow(Math.max(histEarliest, toM - edgeSpanMin() + 1), toM);
   if (older.length) {
     chartBars = older.concat(chartBars);
     if (chartBars.length > DOM_MAX) chartBars = chartBars.slice(0, DOM_MAX);
@@ -509,7 +517,7 @@ async function loadNewer() {
   const last = chartBars[chartBars.length - 1].m;
   if (last >= histLatest) return;
   loadingEdge = true;
-  const newer = await fetchWindow(last + 1, Math.min(histLatest, last + CHUNK));
+  const newer = await fetchWindow(last + 1, Math.min(histLatest, last + edgeSpanMin()));
   if (newer.length) {
     chartBars = chartBars.concat(newer);
     let removed = 0;
