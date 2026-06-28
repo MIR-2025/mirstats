@@ -319,7 +319,7 @@ function stampMin(m) {
   return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 function fillBar(el, b, peak) {
-  el.style.height = (b.total ? Math.max(2, Math.round((b.total / peak) * 100)) : 0) + '%';
+  el.style.height = (b.total ? Math.min(100, Math.max(2, Math.round((b.total / peak) * 100))) : 0) + '%';
   el._b = b; // backing data for the custom tooltip (no native title -> no delay)
   el.innerHTML = b.total
     ? RPM_ORDER.filter(([k]) => b[k]).map(([k, c]) => `<span class="seg ${c}" style="height:${(b[k] / b.total) * 100}%"></span>`).join('')
@@ -363,43 +363,28 @@ function renderAxis() {
   rpmAxis.innerHTML = html;
   syncAxis();
 }
-// Tallest bar currently in the viewport — the y-axis auto-scales to this so the
-// view isn't crushed flat by a distant spike when zoomed out.
-function visiblePeak() {
-  if (!chartBars.length) return 1;
-  const last = chartBars.length - 1;
-  const li = Math.max(0, Math.floor(chartEl.scrollLeft / barW));
-  const ri = Math.min(last, Math.ceil((chartEl.scrollLeft + chartEl.clientWidth) / barW));
-  let pk = 1;
-  for (let i = li; i <= ri; i++) if (chartBars[i].total > pk) pk = chartBars[i].total;
-  return pk;
+// Bar-height scale reference. Use the higher of the 95th-percentile and 3x the
+// median of non-empty buckets: a single outlier spike can't crush the rest to the
+// floor, and a flat window isn't blown up into a solid wall. Bars above it clamp
+// to 100%; the label still shows the true peak.
+function scalePeak() {
+  const t = chartBars.map((b) => b.total).filter((x) => x > 0).sort((a, b) => a - b);
+  if (!t.length) return 1;
+  const p95 = t[Math.min(t.length - 1, Math.floor(t.length * 0.95))];
+  const med = t[t.length >> 1];
+  return Math.max(1, p95, med * 3);
 }
-// Re-scale existing bar heights to the visible peak (style-only, no rebuild).
-function rescaleToView() {
-  const pk = visiblePeak();
-  if (pk === chartPeak) return;
-  chartPeak = pk;
-  const bars = chartEl.children;
-  for (let i = 0; i < bars.length; i++) {
-    const b = chartBars[i];
-    if (b) bars[i].style.height = (b.total ? Math.max(2, Math.round((b.total / pk) * 100)) : 0) + '%';
-  }
-  const el = $('rpm-peak'); if (el) el.textContent = `peak ${pk}/${bucketUnit()}`;
-}
-let rescaleTimer = null;
-function scheduleRescale() { if (rescaleTimer) clearTimeout(rescaleTimer); rescaleTimer = setTimeout(rescaleToView, 60); }
 function renderChart() {
-  chartPeak = Math.max(1, ...chartBars.map((b) => b.total));
+  chartPeak = scalePeak();
   const frag = document.createDocumentFragment();
   for (const b of chartBars) frag.appendChild(makeBar(b, chartPeak));
   chartEl.replaceChildren(frag);
   const pk = $('rpm-peak');
-  if (pk) pk.textContent = `peak ${chartPeak}/${bucketUnit()}`;
+  if (pk) pk.textContent = `peak ${chartBars.length ? Math.max(...chartBars.map((b) => b.total)) : 0}/${bucketUnit()}`;
   const ttl = $('rpm-title');
   if (ttl) ttl.innerHTML = `${bucketTitle()} &middot; history`;
   renderAxis();
   updateEnds();
-  scheduleRescale(); // drop the global peak down to the visible window
 }
 // Up to 3 per-status hit counts for an edge bar, each in its segment color and
 // ordered largest-first; '' when the bar has no hits.
@@ -571,7 +556,6 @@ chartEl.addEventListener('wheel', (e) => {
     chartEl.scrollLeft = idx * barW - cursorX; // keep that bar under the cursor
     renderAxis();
     updateEnds();
-    scheduleRescale(); // zoom changes the visible window → auto-scale heights
     scheduleScope(); // zoom changes the visible window → re-scope tail + donut
   } else {
     // One bar (5 min) per notch normally; when zoomed out so bars are thin
@@ -591,7 +575,6 @@ chartEl.addEventListener('scroll', () => {
   following = atRight && last + chartBucket > histLatest;
   if (chartEl.scrollLeft < EDGE_PX) loadOlder();
   else if (nearRight && !following) loadNewer(); // lazy-load newer toward the live edge
-  scheduleRescale(); // scroll changes the visible window → auto-scale heights
   scheduleScope(); // scroll changes the visible window → re-scope tail + donut
 });
 
