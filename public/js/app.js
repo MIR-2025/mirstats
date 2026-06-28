@@ -543,6 +543,18 @@ async function loadNewer() {
   }
   loadingEdge = false;
 }
+// While browsing left of the live edge, drop bars far off the RIGHT of the
+// viewport out of the DOM (loadNewer reloads them on the way back). Keeps a
+// buffer past the visible edge — wider than the nearRight trigger — so a small
+// scroll can't ping-pong trim↔reload, and only fires once enough has piled up.
+function trimRight() {
+  if (following || !chartBars.length) return; // at the live edge: keep the newest bars
+  const keep = Math.ceil((chartEl.scrollLeft + chartEl.clientWidth + EDGE_PX * 2) / barW);
+  if (chartBars.length - 1 - keep >= Math.ceil(EDGE_PX / barW)) {
+    chartBars = chartBars.slice(0, keep + 1);
+    renderChart(); // trimming the right leaves left content put → scrollLeft unchanged
+  }
+}
 // live current-minute update from the periodic snapshot (only while following)
 function chartLive(d) {
   if (chartIp) return; // filtered to an IP — static view, no global live tick
@@ -599,6 +611,7 @@ chartEl.addEventListener('scroll', () => {
   following = atRight && last + chartBucket > histLatest;
   if (chartEl.scrollLeft < EDGE_PX) loadOlder();
   else if (nearRight && !following) loadNewer(); // lazy-load newer toward the live edge
+  else trimRight(); // browsing left of the edge → shed far-right bars from the DOM
   scheduleScope(); // scroll changes the visible window → re-scope tail + donut
 });
 
