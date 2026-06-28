@@ -164,6 +164,16 @@ function renderStats(d) {
     .map((m) => `<span class="chip"><span class="green">${esc(m.key)}</span><span class="c">${m.count.toLocaleString()}</span></span>`)
     .join('');
 
+  // broken routes — known-good pages returning 404/5xx (real problems, not noise)
+  const br = $('broken');
+  if (br) {
+    const items = d.brokenRoutes || [];
+    br.innerHTML = items.length
+      ? items.map((b) => `<div class="broken-row"><span class="src" style="color:${sourceColor(b.source)}">[${esc(b.source)}]</span> ` +
+          `<span class="broken-path">${esc(b.path)}</span> <span class="muted broken-n">${b.count.toLocaleString()}×</span></div>`).join('')
+      : '<div class="muted small">none — real pages returning 404/5xx will show here</div>';
+  }
+
   // alerts
   const al = $('alerts');
   if (!d.alerts.length) al.innerHTML = '<div class="muted small">none yet</div>';

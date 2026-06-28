@@ -49,6 +49,10 @@ client (no front-end build step).
 - **Infrastructure health** (optional) — a "like-netdata" card showing
   CPU/RAM/disk/load/network for a few Linux servers, pulled over SSH (no agent
   installed on the targets). See **[docs/infrastructure.md](docs/infrastructure.md)**.
+- **Broken-route detection** — crawls each site's sitemap to learn its real pages,
+  so a 404/5xx on a *known-good route* surfaces as a "broken route" (a real
+  problem) instead of being lost in scanner-404 noise. Configure
+  `data/crawl-sites.json` (source → base URL).
 - **Alerts feed** — surfaces `*** ALERT ***` lines from the upstream feed.
 - **Tolerant parser** — extracts source / method / path / status / IP generically,
   so it handles nginx, Apache combined, JSON-ish, and custom formats without

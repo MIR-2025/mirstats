@@ -10,3 +10,7 @@ infra-hosts.json
 
 # geolocation DB (regenerable via tools/fetch-geo.sh; ~11MB)
 geo-country-*.csv
+
+# route-index config (site URLs) + cache — keep the .example committed
+crawl-sites.json
+known-routes.json

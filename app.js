@@ -13,6 +13,7 @@ import { accessLogger } from './middleware/logger.js';
 import { createRouter } from './router.js';
 import { startLogStream } from './lib/logStream.js';
 import { createInfra } from './lib/infra.js';
+import { createRoutes } from './lib/routes.js';
 import { basicAuth, checkBasicAuth, basicAuthEnabled } from './middleware/basicAuth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -58,13 +59,16 @@ async function start() {
   // ── Live log stream → stats aggregator → "stats" room ──
   // Connects to mir.org's /logs Socket.io feed and folds every line into
   // rolling in-memory stats that we push to dashboards.
-  const logStream = startLogStream(io);
+  // ── Known-good route index (sitemap/crawl) — lets us tell a real broken
+  // route from scanner 404 noise ──
+  const routes = createRoutes();
+  const logStream = startLogStream(io, { routes });
 
   // ── Infrastructure health (SSH-pulled per-server metrics → "stats" room) ──
   const infra = createInfra(io);
 
   // ── Routes ──
-  app.use('/', createRouter({ redis, io, logStream, infra }));
+  app.use('/', createRouter({ redis, io, logStream, infra, routes }));
 
   // 404 fallback.
   app.use((req, res) => {
@@ -90,6 +94,7 @@ async function start() {
     server.close();
     logStream.stop(); // flush cumulative stats to disk + close the upstream feed
     infra.stop();
+    routes.stop();
     await redis.quit().catch(() => {});
     await closeMongo().catch(() => {});
     process.exit(0);

@@ -120,6 +120,15 @@
       </div>
 
       <div class="card mb-3">
+        <div class="card-header red acc-toggle" role="button" data-bs-toggle="collapse" data-bs-target="#acc-broken" aria-expanded="true" aria-controls="acc-broken">
+          <span>broken routes</span><span class="acc-caret">▸</span>
+        </div>
+        <div id="acc-broken" class="collapse show">
+          <div class="card-body py-2"><div id="broken"><div class="muted small">none — real pages returning 404/5xx will show here</div></div></div>
+        </div>
+      </div>
+
+      <div class="card mb-3">
         <div class="card-header acc-toggle collapsed" role="button" data-bs-toggle="collapse" data-bs-target="#acc-alerts" aria-expanded="false" aria-controls="acc-alerts">
           <span>recent alerts</span><span class="acc-caret">▸</span>
         </div>

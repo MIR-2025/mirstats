@@ -7,7 +7,7 @@ import { collections } from './lib/mongo.js';
 
 const escapeRx = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-export function createRouter({ redis, io, logStream, infra } = {}) {
+export function createRouter({ redis, io, logStream, infra, routes } = {}) {
   const router = express.Router();
 
   router.use('/auth', authRoutes);
@@ -221,6 +221,13 @@ export function createRouter({ redis, io, logStream, infra } = {}) {
   router.post('/api/infra/hosts/remove', (req, res) => {
     if (!infra) return res.status(503).json({ error: 'infra not running' });
     res.json(infra.removeHost(String(req.body?.label || '')));
+  });
+
+  // Known-good route index status + on-demand re-crawl.
+  router.get('/api/routes', (req, res) => res.json(routes ? routes.status() : []));
+  router.post('/api/routes/recrawl', async (req, res) => {
+    if (!routes) return res.status(503).json({ error: 'route index not running' });
+    try { res.json(await routes.recrawl()); } catch (e) { res.status(500).json({ error: String(e.message || e) }); }
   });
 
   // Health check.
