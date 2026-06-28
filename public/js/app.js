@@ -287,7 +287,7 @@ function clock(ms) {
 // in the DOM, so it stays smooth no matter how far back the data goes.
 const RPM_ORDER = [['2xx', 's2'], ['3xx', 's3'], ['4xx', 's4'], ['5xx', 's5'], ['other', 'so']];
 const CHUNK = 360;    // minutes fetched per edge-load (6h)
-const DOM_MAX = 4320; // max bars kept in the DOM (3 days)
+const DOM_MAX = 2880; // bars kept in the DOM before trimming the far edge + lazy-reloading
 const EDGE_PX = 300;  // start lazy-loading at either edge within this many px
 const VIEW_MINUTES = 360; // most recent 6h fills the viewport on load
 let barW = 4;         // bar pixel width — Ctrl+wheel zooms it; mirrors CSS --barw
@@ -527,8 +527,10 @@ async function loadNewer() {
   const newer = await fetchWindow(last + 1, Math.min(histLatest, last + CHUNK));
   if (newer.length) {
     chartBars = chartBars.concat(newer);
-    if (chartBars.length > DOM_MAX) chartBars = chartBars.slice(chartBars.length - DOM_MAX);
+    let removed = 0;
+    if (chartBars.length > DOM_MAX) { removed = chartBars.length - DOM_MAX; chartBars = chartBars.slice(removed); }
     renderChart();
+    if (removed) chartEl.scrollLeft -= removed * barW; // keep the viewport on the same bars
   }
   loadingEdge = false;
 }
