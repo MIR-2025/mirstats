@@ -213,7 +213,7 @@ All optional; sensible defaults shown.
 |---|---|---|
 | `INFRA_HOSTS_FILE` | `data/infra-hosts.json` | path to the host list (relative to the app dir) |
 | `INFRA_SSH_KEY` | — | fallback private key for every host; omit to use ssh defaults |
-| `INFRA_POLL_MS` | `10000` | poll interval per host in ms (floor 5000) |
+| `INFRA_POLL_MS` | `10000` | poll interval per host in ms (floor 1000) |
 | `INFRA_SSH_TIMEOUT` | `8` | per-host SSH connect timeout in seconds |
 | `INFRA_CPU_WARN` | `90` | flag a host when CPU% ≥ this |
 | `INFRA_MEM_WARN` | `90` | flag when memory used % ≥ this |
