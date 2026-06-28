@@ -363,6 +363,31 @@ function renderAxis() {
   rpmAxis.innerHTML = html;
   syncAxis();
 }
+// Tallest bar currently in the viewport — the y-axis auto-scales to this so the
+// view isn't crushed flat by a distant spike when zoomed out.
+function visiblePeak() {
+  if (!chartBars.length) return 1;
+  const last = chartBars.length - 1;
+  const li = Math.max(0, Math.floor(chartEl.scrollLeft / barW));
+  const ri = Math.min(last, Math.ceil((chartEl.scrollLeft + chartEl.clientWidth) / barW));
+  let pk = 1;
+  for (let i = li; i <= ri; i++) if (chartBars[i].total > pk) pk = chartBars[i].total;
+  return pk;
+}
+// Re-scale existing bar heights to the visible peak (style-only, no rebuild).
+function rescaleToView() {
+  const pk = visiblePeak();
+  if (pk === chartPeak) return;
+  chartPeak = pk;
+  const bars = chartEl.children;
+  for (let i = 0; i < bars.length; i++) {
+    const b = chartBars[i];
+    if (b) bars[i].style.height = (b.total ? Math.max(2, Math.round((b.total / pk) * 100)) : 0) + '%';
+  }
+  const el = $('rpm-peak'); if (el) el.textContent = `peak ${pk}/${bucketUnit()}`;
+}
+let rescaleTimer = null;
+function scheduleRescale() { if (rescaleTimer) clearTimeout(rescaleTimer); rescaleTimer = setTimeout(rescaleToView, 60); }
 function renderChart() {
   chartPeak = Math.max(1, ...chartBars.map((b) => b.total));
   const frag = document.createDocumentFragment();
@@ -374,6 +399,7 @@ function renderChart() {
   if (ttl) ttl.innerHTML = `${bucketTitle()} &middot; history`;
   renderAxis();
   updateEnds();
+  scheduleRescale(); // drop the global peak down to the visible window
 }
 // Up to 3 per-status hit counts for an edge bar, each in its segment color and
 // ordered largest-first; '' when the bar has no hits.
@@ -543,6 +569,7 @@ chartEl.addEventListener('wheel', (e) => {
     chartEl.scrollLeft = idx * barW - cursorX; // keep that bar under the cursor
     renderAxis();
     updateEnds();
+    scheduleRescale(); // zoom changes the visible window → auto-scale heights
     scheduleScope(); // zoom changes the visible window → re-scope tail + donut
   } else {
     chartEl.scrollLeft += Math.sign(e.deltaY) * barW; // one bar (one bucket) per wheel notch
@@ -558,6 +585,7 @@ chartEl.addEventListener('scroll', () => {
   following = atRight && last + chartBucket > histLatest;
   if (chartEl.scrollLeft < EDGE_PX) loadOlder();
   else if (nearRight && !following) loadNewer(); // lazy-load newer toward the live edge
+  scheduleRescale(); // scroll changes the visible window → auto-scale heights
   scheduleScope(); // scroll changes the visible window → re-scope tail + donut
 });
 
