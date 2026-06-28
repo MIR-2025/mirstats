@@ -572,7 +572,11 @@ chartEl.addEventListener('wheel', (e) => {
     scheduleRescale(); // zoom changes the visible window → auto-scale heights
     scheduleScope(); // zoom changes the visible window → re-scope tail + donut
   } else {
-    chartEl.scrollLeft += Math.sign(e.deltaY) * barW; // one bar (one bucket) per wheel notch
+    // One bar (5 min) per notch normally; when zoomed out so bars are thin
+    // (< half the 6h-fit width), jump 8 bars (40 min) so a long span is crossable.
+    const fitW = chartEl.clientWidth / Math.max(1, Math.round(VIEW_MINUTES / chartBucket));
+    const step = barW < fitW / 2 ? 8 : 1;
+    chartEl.scrollLeft += Math.sign(e.deltaY) * step * barW;
   }
 }, { passive: false });
 // follow/browse state + lazy edge loading
