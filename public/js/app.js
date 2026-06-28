@@ -471,7 +471,8 @@ function updateEnds() {
   L.innerHTML = endHtml(chartBars[li]);
   R.innerHTML = endHtml(chartBars[ri]);
   const bars = chartEl.children; // 1:1 with chartBars (appended in order)
-  if (bars[li]) bars[li].classList.add('edge'); // only the left edge bar is tinted
+  if (bars[li]) bars[li].classList.add('edge'); // tint both edge bars (left + right)
+  if (bars[ri]) bars[ri].classList.add('edge');
   // status split bar + legend reflect exactly the visible bars (no fetch),
   // updated on every render / scroll / zoom / live tick.
   const bs = { '2xx': 0, '3xx': 0, '4xx': 0, '5xx': 0, other: 0 };
