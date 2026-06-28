@@ -186,12 +186,22 @@ export function createRouter({ redis, io, logStream, infra } = {}) {
         { $match: { t: { $gte: from, $lt: to } } },
         { $facet: {
           sources: [{ $group: { _id: '$source', count: { $sum: 1 } } }, { $sort: { count: -1 } }, { $limit: 60 }],
-          totals: [{ $group: { _id: null, attacks: { $sum: { $cond: ['$attack', 1, 0] } } } }],
+          totals: [{ $group: { _id: null,
+            attacks: { $sum: { $cond: ['$attack', 1, 0] } },
+            reqs: { $sum: 1 },
+            s5: { $sum: { $cond: [{ $eq: ['$cls', '5xx'] }, 1, 0] } },
+            e4: { $sum: { $cond: [{ $eq: ['$cls', '4xx'] }, 1, 0] } },
+            n4: { $sum: { $cond: [{ $and: [{ $eq: ['$cls', '4xx'] }, '$attack'] }, 1, 0] } },
+          } }],
         } },
       ]).toArray();
+      const t = agg?.totals?.[0] || {};
+      const realErr = (t.s5 || 0) + ((t.e4 || 0) - (t.n4 || 0)); // 5xx + 4xx on normal routes
       res.json({
         sources: (agg?.sources || []).map((r) => ({ key: r._id, count: r.count })),
-        attacks: agg?.totals?.[0]?.attacks || 0,
+        attacks: t.attacks || 0,
+        realErrorRate: t.reqs ? +((realErr / t.reqs) * 100).toFixed(1) : 0,
+        noiseRate: t.reqs ? +(((t.n4 || 0) / t.reqs) * 100).toFixed(1) : 0,
       });
     } catch (e) {
       res.status(500).json({ error: String(e.message || e) });

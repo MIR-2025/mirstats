@@ -106,6 +106,16 @@ function renderStatus(byStatus) {
     .join('');
 }
 
+// Error-rate headline = REAL errors only (5xx + 4xx on normal routes). Scanner
+// 4xx noise goes to the muted sub-line. Colour by severity so a real failure
+// actually moves it. noiseRate omitted (null) when scoped to a window without it.
+function setErrCard(rate, noiseRate) {
+  const el = $('c-err');
+  if (el) { el.textContent = rate + '%'; el.className = 'value ' + (rate < 1 ? 'green' : rate < 5 ? 'yellow' : 'red'); }
+  const sub = $('c-errsub');
+  if (sub && noiseRate != null) sub.textContent = `${noiseRate}% scanner 4xx`;
+}
+
 function renderStats(d) {
   // upstream + header
   const up = $('upstream');
@@ -117,11 +127,11 @@ function renderStats(d) {
   // cards
   // REQUESTS + ERROR RATE follow the visible window while browsing (see
   // updateEnds); only refresh them from the live snapshot at the live edge.
-  lastCounts = d.counts; lastErr = d.errorRate;
+  lastCounts = d.counts; lastErr = d.realErrorRate;
   if (following) $('c-req').textContent = d.counts.requests.toLocaleString();
   $('c-reqsub').textContent = `${d.counts.requests ? Math.round((d.counts.assets / d.counts.requests) * 100) : 0}% assets`;
   $('c-rate').textContent = d.ratePerMin.toLocaleString();
-  if (following) $('c-err').textContent = d.errorRate + '%';
+  if (following) setErrCard(d.realErrorRate, d.noiseRate);
   if (following) $('c-atk').textContent = d.counts.attacks.toLocaleString();
   $('c-atksub').textContent = d.attackRate + '% of reqs';
   $('c-alert').textContent = d.counts.alerts.toLocaleString();
@@ -404,10 +414,11 @@ function updateEnds() {
   if (!following) {
     const tot = bs['2xx'] + bs['3xx'] + bs['4xx'] + bs['5xx'] + bs.other;
     $('c-req').textContent = tot.toLocaleString();
-    $('c-err').textContent = (tot ? ((bs['4xx'] + bs['5xx']) / tot * 100).toFixed(1) : '0.0') + '%';
+    // c-err while browsing is the window's REAL error rate — set by scopeDonut
+    // (the bars can't tell scanner noise from real 4xx; that needs the events).
   } else if (lastCounts) {
     $('c-req').textContent = lastCounts.requests.toLocaleString();
-    $('c-err').textContent = lastErr + '%';
+    setErrCard(lastErr);
     $('c-atk').textContent = lastCounts.attacks.toLocaleString();
   }
 }
@@ -597,6 +608,7 @@ async function scopeDonut(fromMs, toMs) {
     if (d && Array.isArray(d.sources)) {
       renderSources(dropTrunc(d.sources));
       $('c-atk').textContent = (d.attacks || 0).toLocaleString(); // window attacks
+      if (d.realErrorRate != null) setErrCard(d.realErrorRate, d.noiseRate); // window real error rate
     }
   } catch { /* ignore */ }
 }
@@ -866,8 +878,9 @@ function renderInfra(hosts) {
         `<span class="srv-up muted">offline</span></div><div class="muted small srv-off">${esc(s.error || 'unreachable')}</div>`;
     } else {
       const load = s.load ? s.load.map((x) => x.toFixed(2)).join(' ') : '–';
+      const host = s.host && s.host !== s.label ? `<span class="srv-host muted">${esc(s.host)}</span>` : '';
       body = `<div class="srv-h"><span class="infra-dot ${s.warn ? 'warn' : 'ok'}"></span>` +
-        `<span class="srv-name">${esc(s.label)}</span>${infraSpark(s.hist)}</div>` +
+        `<span class="srv-name">${esc(s.label)}</span>${host}${infraSpark(s.hist)}</div>` +
         infraBar('cpu', s.cpu) + infraBar('mem', s.mem) + (s.disk ? infraBar('disk', s.disk.pct) : '') +
         `<div class="infra-meta"><span class="muted">load</span> ${load} <span class="muted">net</span> ` +
         `↓${infraRate(s.rx)} ↑${infraRate(s.tx)} <span class="muted">· ${infraUp(s.up)}</span></div>`;

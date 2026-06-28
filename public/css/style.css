@@ -195,6 +195,7 @@ table.dash-table tr:hover td { background: var(--row-hover); }
 .srv-card.warn { border-color: var(--red); }
 .srv-h { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
 .srv-name { font-weight: 700; font-size: 0.82rem; }
+.srv-host { font-size: 0.66rem; }
 .srv-up { margin-left: auto; font-size: 0.66rem; white-space: nowrap; }
 .srv-card .infra-spark { margin-left: auto; }
 .srv-card .srv-up { margin-left: 6px; }
