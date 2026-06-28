@@ -363,17 +363,6 @@ function renderAxis() {
   rpmAxis.innerHTML = html;
   syncAxis();
 }
-// Bar-height scale reference. Use the higher of the 95th-percentile and 3x the
-// median of non-empty buckets: a single outlier spike can't crush the rest to the
-// floor, and a flat window isn't blown up into a solid wall. Bars above it clamp
-// to 100%; the label still shows the true peak.
-function scalePeak() {
-  const t = chartBars.map((b) => b.total).filter((x) => x > 0).sort((a, b) => a - b);
-  if (!t.length) return 1;
-  const p95 = t[Math.min(t.length - 1, Math.floor(t.length * 0.95))];
-  const med = t[t.length >> 1];
-  return Math.max(1, p95, med * 3);
-}
 // Collapse any duplicate-minute bars (e.g. from an earlier seam-overlap) so each
 // bucket renders once; the later copy (a more complete server fetch) wins. Seam
 // dupes are adjacent, so an in-place pass is enough and self-heals live state.
@@ -385,17 +374,60 @@ function dedupeBars() {
   }
   if (w !== chartBars.length) chartBars.length = w;
 }
+// ── y-axis (number line) + visible-window auto-scaling ──
+// A gutter built in JS (so no template/restart needed) holding the value scale.
+const yAxisEl = document.createElement('div');
+yAxisEl.id = 'rpm-yaxis';
+chartEl.parentElement.insertBefore(yAxisEl, chartEl); // first child of .rpm-wrap, left of #rpm
+const fmtNum = (v) => (v >= 1000 ? (v / 1000 >= 10 ? Math.round(v / 1000) : +(v / 1000).toFixed(1)) + 'k' : String(Math.round(v)));
+// A "nice" round step (1/2/5 × 10ⁿ) so axis ticks land on clean numbers.
+function niceStep(v, ticks = 4) {
+  const raw = Math.max(v, 1) / ticks;
+  const pow = Math.pow(10, Math.floor(Math.log10(raw)));
+  const n = raw / pow;
+  return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * pow;
+}
+function renderYAxis(step, axisMax) {
+  let html = '';
+  for (let v = 0; v <= axisMax + 1e-9; v += step) html += `<span class="rpm-y-tick" style="bottom:${(v / axisMax) * 100}%">${fmtNum(v)}</span>`;
+  yAxisEl.innerHTML = html;
+}
+// Scale bar heights to the PEAK OF THE VISIBLE WINDOW (rounded up to a nice axis
+// max), and redraw the number line to match. Only the viewport ±1 screen is
+// restyled, so it stays cheap however many bars are loaded.
+function applyScale() {
+  if (!chartBars.length) { yAxisEl.innerHTML = ''; return; }
+  const vw = chartEl.clientWidth || chartBars.length * barW;
+  const last = chartBars.length - 1;
+  const li = Math.max(0, Math.floor(chartEl.scrollLeft / barW));
+  const ri = Math.min(last, Math.ceil((chartEl.scrollLeft + vw) / barW) - 1);
+  let vis = 1;
+  for (let i = li; i <= ri; i++) { const t = chartBars[i].total; if (t > vis) vis = t; }
+  const step = niceStep(vis);
+  const axisMax = Math.max(step, Math.ceil(vis / step) * step);
+  chartPeak = axisMax;
+  const bars = chartEl.children;
+  const screen = Math.ceil(vw / barW);
+  for (let i = Math.max(0, li - screen); i <= Math.min(last, ri + screen); i++) {
+    const t = chartBars[i].total;
+    if (bars[i]) bars[i].style.height = (t ? Math.min(100, Math.max(2, Math.round((t / axisMax) * 100))) : 0) + '%';
+  }
+  yAxisEl.style.height = (chartEl.clientHeight || 170) + 'px'; // match the bars' baseline (above the scrollbar)
+  renderYAxis(step, axisMax);
+  const pk = $('rpm-peak');
+  if (pk) pk.textContent = `peak ${vis}/${bucketUnit()}`;
+}
+let scaleRaf = 0;
+function scheduleScale() { if (!scaleRaf) scaleRaf = requestAnimationFrame(() => { scaleRaf = 0; applyScale(); }); }
 function renderChart() {
   dedupeBars();
-  chartPeak = scalePeak();
   const frag = document.createDocumentFragment();
-  for (const b of chartBars) frag.appendChild(makeBar(b, chartPeak));
+  for (const b of chartBars) frag.appendChild(makeBar(b, 1)); // height set by applyScale below
   chartEl.replaceChildren(frag);
-  const pk = $('rpm-peak');
-  if (pk) pk.textContent = `peak ${chartBars.length ? Math.max(...chartBars.map((b) => b.total)) : 0}/${bucketUnit()}`;
   const ttl = $('rpm-title');
   if (ttl) ttl.innerHTML = `${bucketTitle()} &middot; history`;
   renderAxis();
+  applyScale(); // visible-window bar heights + number line + peak label
   updateEnds();
 }
 // Up to 3 per-status hit counts for an edge bar, each in its segment color and
@@ -564,8 +596,8 @@ function chartLive(d) {
   const last = chartBars[chartBars.length - 1];
   if (cur.m === last.m) {
     chartBars[chartBars.length - 1] = cur;
-    if (cur.total > chartPeak) renderChart();
-    else fillBar(chartEl.lastElementChild, cur, chartPeak);
+    if (cur.total > chartPeak) renderChart(); // outgrew the axis → rescale
+    else { fillBar(chartEl.lastElementChild, cur, chartPeak); scheduleScale(); }
   } else if (cur.m > last.m) {
     for (let m = last.m + chartBucket; m < cur.m; m += chartBucket) chartBars.push({ m, '2xx': 0, '3xx': 0, '4xx': 0, '5xx': 0, other: 0, total: 0 });
     chartBars.push(cur);
@@ -591,6 +623,7 @@ chartEl.addEventListener('wheel', (e) => {
     try { localStorage.setItem('mirstats.barw', barW); } catch { /* ignore */ }
     chartEl.scrollLeft = idx * barW - cursorX; // keep that bar under the cursor
     renderAxis();
+    applyScale(); // zoom changes the visible set → re-scale heights + number line
     updateEnds();
     scheduleScope(); // zoom changes the visible window → re-scope tail + donut
   } else {
@@ -604,6 +637,7 @@ chartEl.addEventListener('wheel', (e) => {
 // follow/browse state + lazy edge loading
 chartEl.addEventListener('scroll', () => {
   syncAxis();
+  scheduleScale(); // heights + number line track the visible window as it scrolls
   updateEnds();
   const atRight = chartEl.scrollLeft + chartEl.clientWidth >= chartEl.scrollWidth - 8;
   const nearRight = chartEl.scrollLeft + chartEl.clientWidth >= chartEl.scrollWidth - EDGE_PX;
