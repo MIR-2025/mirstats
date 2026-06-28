@@ -223,11 +223,20 @@ export function createRouter({ redis, io, logStream, infra, routes } = {}) {
     res.json(infra.removeHost(String(req.body?.label || '')));
   });
 
-  // Known-good route index status + on-demand re-crawl.
+  // Known-good route index: status, manage the site list, on-demand re-crawl.
   router.get('/api/routes', (req, res) => res.json(routes ? routes.status() : []));
   router.post('/api/routes/recrawl', async (req, res) => {
     if (!routes) return res.status(503).json({ error: 'route index not running' });
     try { res.json(await routes.recrawl()); } catch (e) { res.status(500).json({ error: String(e.message || e) }); }
+  });
+  router.post('/api/routes/sites', (req, res) => {
+    if (!routes) return res.status(503).json({ error: 'route index not running' });
+    try { res.json(routes.addSite({ source: req.body?.source, url: req.body?.url })); }
+    catch (e) { res.status(400).json({ error: String(e.message || e) }); }
+  });
+  router.post('/api/routes/sites/remove', (req, res) => {
+    if (!routes) return res.status(503).json({ error: 'route index not running' });
+    res.json(routes.removeSite(String(req.body?.source || '')));
   });
 
   // Health check.

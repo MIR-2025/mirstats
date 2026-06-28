@@ -935,6 +935,40 @@ $('infra-hosts')?.addEventListener('click', (e) => {
 });
 fetch('/api/infra/hosts').then((r) => r.json()).then(renderInfraHosts).catch(() => {});
 
+// ── route index (map a log source → site URL; crawl its known-good pages) ──
+function renderRoutes(list) {
+  const el = $('rsites');
+  if (!el) return;
+  if (!Array.isArray(list) || !list.length) { el.innerHTML = '<div class="muted small">no sites mapped yet — add one above</div>'; return; }
+  el.innerHTML = list.map((s) => {
+    const when = s.lastCrawl ? `${Math.round((Date.now() - s.lastCrawl) / 60000)}m ago` : 'crawling…';
+    const info = s.error ? `<span class="red">${esc(s.error)}</span>` : `${(s.count || 0).toLocaleString()} routes · ${when}`;
+    return `<div class="srv-cfg"><span class="srv-cfg-l">${esc(s.source)}</span><span class="muted srv-cfg-s">${info}</span>` +
+      `<span class="srv-rm" data-src="${esc(s.source)}" role="button" title="remove">✕</span></div>`;
+  }).join('');
+}
+async function routeAdd() {
+  const src = $('rsite-src'); const url = $('rsite-url'); const msg = $('rsite-msg');
+  const source = (src.value || '').trim(); const u = (url.value || '').trim();
+  if (!source || !u) return;
+  msg.textContent = 'adding + crawling…'; msg.className = 'muted small';
+  try {
+    const r = await fetch('/api/routes/sites', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ source, url: u }) });
+    const d = await r.json();
+    if (!r.ok) { msg.textContent = d.error || 'failed'; msg.className = 'red small'; return; }
+    src.value = ''; url.value = ''; msg.textContent = ''; renderRoutes(d);
+    setTimeout(() => fetch('/api/routes').then((x) => x.json()).then(renderRoutes).catch(() => {}), 6000); // refresh once the crawl lands
+  } catch { msg.textContent = 'request failed'; msg.className = 'red small'; }
+}
+$('rsite-add')?.addEventListener('click', routeAdd);
+$('rsite-url')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') routeAdd(); });
+$('rsites')?.addEventListener('click', (e) => {
+  const rm = e.target.closest('.srv-rm');
+  if (rm) fetch('/api/routes/sites/remove', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ source: rm.dataset.src }) })
+    .then((r) => r.json()).then(renderRoutes).catch(() => {});
+});
+fetch('/api/routes').then((r) => r.json()).then(renderRoutes).catch(() => {});
+
 // ── AI log analysis ── pick a day, server summarizes it via the Anthropic API.
 const aiOut = $('ai-out');
 const aiDate = $('ai-date');
