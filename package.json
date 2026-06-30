@@ -1,5 +1,5 @@
 {
-  "name": "mir-sentinel",
+  "name": "mirstats",
   "version": "1.0.0",
   "description": "MIR Sentinel — self-hosted real-time log Monitoring, Intelligence & Reporting: live tail + traffic, attacker detection & AbuseIPDB auto-reporting, AI analysis, IP search, and a scrollable history across many sites on one screen.",
   "license": "MIT",
@@ -15,6 +15,7 @@
     "ejs": "^3.1.10",
     "express": "^5.1.0",
     "express-session": "^1.18.1",
+    "mir-sentinel": "^0.1.0",
     "mongodb": "^6.8.0",
     "morgan": "^1.10.0",
     "nodemailer": "^7.0.0",
