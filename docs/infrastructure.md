@@ -218,6 +218,7 @@ All optional; sensible defaults shown.
 | `INFRA_CPU_WARN` | `90` | flag a host when CPU% ≥ this |
 | `INFRA_MEM_WARN` | `90` | flag when memory used % ≥ this |
 | `INFRA_DISK_WARN` | `90` | flag when disk used % ≥ this |
+| `INFRA_TEMP_WARN` | `80` | flag when CPU °C ≥ this. The temp bar appears only if the host exposes `/sys/class/thermal` (bare-metal); most VMs/cloud droplets don't, so it's hidden there |
 | `INFRA_LOAD_WARN` | `1.5` | flag when 1-min load average **per core** ≥ this |
 | `INFRA_WARN_MARGIN` | `15` | per-metric bars turn amber this many points below the crit (`*_WARN`) threshold; red at/above it |
 

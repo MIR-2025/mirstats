@@ -387,14 +387,19 @@ function niceStep(v, ticks = 4) {
   const n = raw / pow;
   return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * pow;
 }
-function renderYAxis(step, axisMax) {
-  let html = '';
-  for (let v = 0; v <= axisMax + 1e-9; v += step) html += `<span class="rpm-y-tick" style="bottom:${(v / axisMax) * 100}%">${fmtNum(v)}</span>`;
+// Number line for a chart whose ceiling IS the visible peak: clean intermediate
+// ticks below the peak, plus the exact peak value pinned at the very top.
+function renderYAxis(peak) {
+  const step = niceStep(peak);
+  let html = '<span class="rpm-y-tick" style="bottom:0%">0</span>';
+  for (let v = step; v < peak - step * 0.5; v += step) html += `<span class="rpm-y-tick" style="bottom:${(v / peak) * 100}%">${fmtNum(v)}</span>`;
+  html += `<span class="rpm-y-tick" style="bottom:100%">${fmtNum(peak)}</span>`;
   yAxisEl.innerHTML = html;
 }
-// Scale bar heights to the PEAK OF THE VISIBLE WINDOW (rounded up to a nice axis
-// max), and redraw the number line to match. Only the viewport ±1 screen is
-// restyled, so it stays cheap however many bars are loaded.
+// Scale bar heights to the PEAK OF THE VISIBLE WINDOW itself, so the tallest bar
+// in view always reaches the ceiling — only the bars currently in view drive the
+// scale. The number line is redrawn to match. Restyling is bounded to the
+// viewport ±1 screen, so it stays cheap however many bars are loaded.
 function applyScale() {
   if (!chartBars.length) { yAxisEl.innerHTML = ''; return; }
   const vw = chartEl.clientWidth || chartBars.length * barW;
@@ -403,17 +408,15 @@ function applyScale() {
   const ri = Math.min(last, Math.ceil((chartEl.scrollLeft + vw) / barW) - 1);
   let vis = 1;
   for (let i = li; i <= ri; i++) { const t = chartBars[i].total; if (t > vis) vis = t; }
-  const step = niceStep(vis);
-  const axisMax = Math.max(step, Math.ceil(vis / step) * step);
-  chartPeak = axisMax;
+  chartPeak = vis; // ceiling = visible peak → the tallest visible bar fills the frame
   const bars = chartEl.children;
   const screen = Math.ceil(vw / barW);
   for (let i = Math.max(0, li - screen); i <= Math.min(last, ri + screen); i++) {
     const t = chartBars[i].total;
-    if (bars[i]) bars[i].style.height = (t ? Math.min(100, Math.max(2, Math.round((t / axisMax) * 100))) : 0) + '%';
+    if (bars[i]) bars[i].style.height = (t ? Math.min(100, Math.max(2, Math.round((t / vis) * 100))) : 0) + '%';
   }
   yAxisEl.style.height = (chartEl.clientHeight || 170) + 'px'; // match the bars' baseline (above the scrollbar)
-  renderYAxis(step, axisMax);
+  renderYAxis(vis);
   const pk = $('rpm-peak');
   if (pk) pk.textContent = `peak ${vis}/${bucketUnit()}`;
 }
@@ -597,8 +600,8 @@ function chartLive(d) {
   const last = chartBars[chartBars.length - 1];
   if (cur.m === last.m) {
     chartBars[chartBars.length - 1] = cur;
-    if (cur.total > chartPeak) renderChart(); // outgrew the axis → rescale
-    else { fillBar(chartEl.lastElementChild, cur, chartPeak); scheduleScale(); }
+    fillBar(chartEl.lastElementChild, cur, chartPeak); // paint now…
+    scheduleScale(); // …then rescale the visible window (handles the live bar outgrowing the peak)
   } else if (cur.m > last.m) {
     for (let m = last.m + chartBucket; m < cur.m; m += chartBucket) chartBars.push({ m, '2xx': 0, '3xx': 0, '4xx': 0, '5xx': 0, other: 0, total: 0 });
     chartBars.push(cur);
@@ -967,9 +970,9 @@ function infraSpark(hist) {
   const pts = v.map((x, i) => `${(i / (n - 1) * W).toFixed(1)},${(H - x / 100 * H).toFixed(1)}`).join(' ');
   return `<svg class="infra-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><polyline points="${pts}"/></svg>`;
 }
-function infraBar(label, pct, crit, margin) {
-  if (pct == null) return '';
-  return `<div class="im"><span class="im-l">${label}</span><span class="im-bar"><span class="im-fill ${pctCls(pct, crit, margin)}" style="width:${Math.min(100, pct)}%"></span></span><span class="im-v">${pct}%</span></div>`;
+function infraBar(label, val, crit, margin, unit = '%') {
+  if (val == null) return '';
+  return `<div class="im"><span class="im-l">${label}</span><span class="im-bar"><span class="im-fill ${pctCls(val, crit, margin)}" style="width:${Math.min(100, val)}%"></span></span><span class="im-v">${val}${unit}</span></div>`;
 }
 // Live per-server cards in the row under the stat strip.
 function renderInfra(hosts) {
@@ -989,6 +992,7 @@ function renderInfra(hosts) {
         infraBar('cpu', s.cpu, s.warnAt && s.warnAt.cpu, s.warnAt && s.warnAt.margin) +
         infraBar('mem', s.mem, s.warnAt && s.warnAt.mem, s.warnAt && s.warnAt.margin) +
         (s.disk ? infraBar('disk', s.disk.pct, s.warnAt && s.warnAt.disk, s.warnAt && s.warnAt.margin) : '') +
+        (s.temp != null ? infraBar('temp', s.temp, s.warnAt && s.warnAt.temp, s.warnAt && s.warnAt.margin, '°C') : '') +
         `<div class="infra-meta"><span class="muted">load</span> ${load} <span class="muted">net</span> ` +
         `↓${infraRate(s.rx)} ↑${infraRate(s.tx)} <span class="muted">· ${infraUp(s.up)}</span></div>`;
     }
