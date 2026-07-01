@@ -30,6 +30,32 @@ $('theme-toggle').addEventListener('click', () => {
   applyTheme(theme);
 });
 
+// ── open / close all collapsible cards (one toggle for the whole board) ──
+(() => {
+  const themeBtn = $('theme-toggle');
+  if (!themeBtn || !window.bootstrap) return;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.id = 'collapse-all';
+  btn.className = 'theme-toggle'; // match the header button next to it
+  themeBtn.parentElement.insertBefore(btn, themeBtn); // sits just left of the theme toggle
+  const panels = () => [...document.querySelectorAll('[id^="acc-"].collapse')];
+  const anyClosed = () => panels().some((p) => !p.classList.contains('show'));
+  function sync() {
+    const open = anyClosed();
+    btn.textContent = open ? '⤢ open all' : '⤡ close all';
+    btn.title = open ? 'Expand every card' : 'Collapse every card';
+  }
+  btn.addEventListener('click', () => {
+    const open = anyClosed(); // anything closed → this click opens all; else closes all
+    for (const p of panels()) window.bootstrap.Collapse.getOrCreateInstance(p, { toggle: false })[open ? 'show' : 'hide']();
+  });
+  // keep the label honest when cards are toggled one at a time
+  document.addEventListener('shown.bs.collapse', sync);
+  document.addEventListener('hidden.bs.collapse', sync);
+  sync();
+})();
+
 // Per-attacker lookup / abuse-reporting services. Each renders a small clickable
 // favicon (hosted locally in /images) that opens that service's page for the IP.
 const SERVICES = [
